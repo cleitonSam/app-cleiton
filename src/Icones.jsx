@@ -210,6 +210,17 @@ export const IcGrafico = svg(
     <path d="M8 16l3-4 3 2 4-6" />
   </>
 );
+export const IcCamera = svg(
+  <>
+    <path d="M3 8a2 2 0 0 1 2-2h2l1.5-2h7L19 6h0a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" />
+    <circle cx="12" cy="13" r="3.5" />
+  </>
+);
+export const IcLixo = svg(
+  <>
+    <path d="M4 7h16M9 7V5h6v2M6 7l1 13h10l1-13" />
+  </>
+);
 export const IcChamaMini = IcChama;
 
 // ícone pra cada refeição pelo nome

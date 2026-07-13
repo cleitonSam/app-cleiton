@@ -7,6 +7,7 @@ import {
   IcAgua,
   IcAlvo,
   IcApito,
+  IcCamera,
   IcChama,
   IcCheque,
   IcChevron,
@@ -15,6 +16,7 @@ import {
   IcGrafico,
   IcHalter,
   IcInfo,
+  IcLixo,
   IcMaca,
   IconeEquip,
   IconeRefeicao,
@@ -29,6 +31,31 @@ import {
 
 // vibração curta no toque (só onde o aparelho suporta) — dá o "tato" do premium
 const buzz = (p = 10) => { try { navigator.vibrate && navigator.vibrate(p); } catch {} };
+
+// Lê a foto da câmera/galeria, redimensiona e comprime pra JPEG base64 leve.
+// A câmera do celular gera fotos de 3-8 MB; aqui vira ~60-150 KB.
+function lerImagemComprimida(file, maxLado = 900, qualidade = 0.7) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onerror = () => reject(new Error("Não consegui ler a foto."));
+    reader.onload = () => {
+      const img = new Image();
+      img.onload = () => {
+        let w = img.width, h = img.height;
+        if (w > h && w > maxLado) { h = Math.round((h * maxLado) / w); w = maxLado; }
+        else if (h > maxLado) { w = Math.round((w * maxLado) / h); h = maxLado; }
+        const canvas = document.createElement("canvas");
+        canvas.width = w; canvas.height = h;
+        canvas.getContext("2d").drawImage(img, 0, 0, w, h);
+        try { resolve(canvas.toDataURL("image/jpeg", qualidade)); }
+        catch { reject(new Error("Não consegui processar a foto.")); }
+      };
+      img.onerror = () => reject(new Error("Essa imagem não abriu."));
+      img.src = reader.result;
+    };
+    reader.readAsDataURL(file);
+  });
+}
 
 const OBJETIVOS = [
   { v: "Ganho de massa", t: "Ganhar massa", d: "Engordar com músculo", ic: IcHalter, cor: "#1F5FE6" },
@@ -50,6 +77,25 @@ const PARQ = [
   "Já teve tontura, desmaio ou perda de consciência?",
   "Tem problema no osso ou articulação que piora com exercício?",
   "Toma remédio para pressão ou coração?",
+];
+
+// ── Dieta: opções do typeform de preferências ──
+// Comidas comuns do dia a dia brasileiro, agrupadas — a pessoa toca no que gosta
+// e no que não curte, e a IA monta o cardápio respeitando isso.
+const COMIDAS = [
+  { grupo: "Proteínas", itens: ["Frango", "Carne vermelha", "Ovo", "Peixe", "Atum", "Tilápia", "Whey", "Queijo", "Iogurte"] },
+  { grupo: "Carboidratos", itens: ["Arroz", "Feijão", "Batata", "Batata-doce", "Macarrão", "Pão", "Tapioca", "Aveia", "Mandioca"] },
+  { grupo: "Frutas", itens: ["Banana", "Maçã", "Morango", "Laranja", "Mamão", "Abacate", "Uva", "Manga"] },
+  { grupo: "Verduras & legumes", itens: ["Salada verde", "Brócolis", "Cenoura", "Tomate", "Abobrinha", "Couve"] },
+  { grupo: "Outros", itens: ["Café", "Leite", "Castanhas", "Pasta de amendoim", "Chocolate", "Tapioca"] },
+];
+const REFEICOES_PADRAO = [
+  { nome: "Café da manhã", horario: "07:00" },
+  { nome: "Lanche da manhã", horario: "10:00" },
+  { nome: "Almoço", horario: "12:30" },
+  { nome: "Lanche da tarde", horario: "16:00" },
+  { nome: "Jantar", horario: "20:00" },
+  { nome: "Ceia", horario: "22:30" },
 ];
 
 export default function Treino({ s, setS, iaAtiva }) {
@@ -87,6 +133,7 @@ export default function Treino({ s, setS, iaAtiva }) {
 
   const salvarPlano = (anamnese, plano) => setS((x) => ({ ...x, treino: { ...x.treino, anamnese, plano } }));
   const setDieta = (dieta) => setS((x) => ({ ...x, treino: { ...x.treino, dieta } }));
+  const setDietaPrefs = (dietaPrefs) => setS((x) => ({ ...x, treino: { ...x.treino, dietaPrefs } }));
 
   return (
     <section className="tr">
@@ -112,6 +159,7 @@ export default function Treino({ s, setS, iaAtiva }) {
           <Anamnese
             inicial={treino.anamnese}
             pesoSalvo={pesoSalvo}
+            iaAtiva={iaAtiva}
             onCancelar={() => setVista(temPlano ? "plano" : "intro")}
             onPronto={(anamnese, plano) => {
               salvarPlano(anamnese, plano);
@@ -135,7 +183,7 @@ export default function Treino({ s, setS, iaAtiva }) {
         )}
         {vista === "plano" && !temPlano && <Intro onComecar={() => setVista("anamnese")} />}
 
-        {vista === "dieta" && <Dieta anamnese={treino.anamnese} dieta={treino.dieta} onDieta={setDieta} iaAtiva={iaAtiva} temAnamnese={!!treino.anamnese} onFazerAnamnese={() => setVista("anamnese")} />}
+        {vista === "dieta" && <Dieta anamnese={treino.anamnese} dieta={treino.dieta} onDieta={setDieta} prefs={treino.dietaPrefs} onPrefs={setDietaPrefs} iaAtiva={iaAtiva} temAnamnese={!!treino.anamnese} onFazerAnamnese={() => setVista("anamnese")} />}
 
         {vista === "personal" && <Chat agente="personal" anamnese={treino.anamnese} plano={treino.plano} iaAtiva={iaAtiva} />}
       </div>
@@ -177,10 +225,12 @@ function Intro({ onComecar }) {
 }
 
 // ─── Anamnese (multi-step) ────────────────────────────────────────────────────
-function Anamnese({ inicial, pesoSalvo, onPronto, onCancelar }) {
+function Anamnese({ inicial, pesoSalvo, iaAtiva, onPronto, onCancelar }) {
   const [passo, setPasso] = useState(0);
   const [erro, setErro] = useState(null);
   const [gerando, setGerando] = useState(false);
+  const [imagem, setImagem] = useState(null); // foto dos aparelhos (base64), opcional
+  const [fase, setFase] = useState(""); // texto do loading
   const [a, setA] = useState(() => ({
     objetivo: inicial?.objetivo || "",
     nivel: inicial?.nivel || "Iniciante",
@@ -205,6 +255,16 @@ function Anamnese({ inicial, pesoSalvo, onPronto, onCancelar }) {
       return { ...x, equipamentos: eq.length ? eq : ["corpo"] };
     });
 
+  const escolherFoto = async (file) => {
+    if (!file) return;
+    setErro(null);
+    try {
+      setImagem(await lerImagemComprimida(file, 900, 0.7));
+    } catch (e) {
+      setErro(e.message);
+    }
+  };
+
   const finalizar = async () => {
     setErro(null);
     setGerando(true);
@@ -216,7 +276,14 @@ function Anamnese({ inicial, pesoSalvo, onPronto, onCancelar }) {
       parqSim: parq.some(Boolean),
     };
     try {
-      const { plano } = await api.treinoGerar(anamnese);
+      let plano;
+      if (iaAtiva) {
+        // a IA monta o plano (olhando a foto dos aparelhos, se houver)
+        setFase(imagem ? "Olhando seus aparelhos na foto…" : "Montando seu treino com IA…");
+        plano = (await api.iaPlano(anamnese, imagem || undefined)).plano;
+      } else {
+        plano = (await api.treinoGerar(anamnese)).plano;
+      }
       plano.geradoEm = Date.now();
       onPronto(anamnese, plano);
     } catch (e) {
@@ -272,6 +339,25 @@ function Anamnese({ inicial, pesoSalvo, onPronto, onCancelar }) {
               </button>
             ))}
           </div>
+
+          {/* Foto dos aparelhos: a IA olha e monta só com o que tem (ótimo pra casa/condomínio) */}
+          {iaAtiva && (
+            <div className="trfotoaparelhos">
+              {imagem ? (
+                <div className="trfotoprev">
+                  <img src={imagem} alt="aparelhos do seu treino" />
+                  <button className="trfotox" onClick={() => setImagem(null)} aria-label="Remover foto">×</button>
+                  <span className="trfotook"><IcCheque size={13} /> Vou montar o treino com o que aparece aqui</span>
+                </div>
+              ) : (
+                <label className="trfotobtn">
+                  <IcCamera size={20} />
+                  <span><strong>Treina em casa ou no condomínio?</strong> Tira uma foto dos aparelhos que a IA monta o treino com eles.</span>
+                  <input type="file" accept="image/*" capture="environment" style={{ display: "none" }} onChange={(e) => { escolherFoto(e.target.files?.[0]); e.target.value = ""; }} />
+                </label>
+              )}
+            </div>
+          )}
         </>
       ),
     },
@@ -336,7 +422,7 @@ function Anamnese({ inicial, pesoSalvo, onPronto, onCancelar }) {
         {!ultimo ? (
           <button className="trbtn" disabled={!atual.valido} onClick={() => setPasso((p) => p + 1)}>Continuar</button>
         ) : (
-          <button className="trbtn" disabled={gerando} onClick={finalizar}>{gerando ? "Montando…" : "Montar meu treino"}</button>
+          <button className="trbtn" disabled={gerando} onClick={finalizar}>{gerando ? (fase || "Montando…") : (iaAtiva ? "A IA monta meu treino" : "Montar meu treino")}</button>
         )}
       </div>
     </div>
@@ -471,6 +557,20 @@ function Plano({ plano, anamnese, cargas, cargasHist, feitoHoje, onCarga, onTogg
         <button className="trlink" onClick={onRefazer}>Refazer</button>
       </div>
 
+      {/* selo: quando a IA montou (e o que ela viu na foto dos aparelhos) */}
+      {plano.porIA && (
+        <div className="trplanoia">
+          <span className="trplanoiaselo"><IcApito size={14} /> Montado pela IA pro seu perfil</span>
+          {plano.observacao && <p className="trplanoiaobs">{plano.observacao}</p>}
+          {plano.equipamentosVistos?.length ? (
+            <div className="trplanoiaeq">
+              <IcCamera size={13} /> <span>Vi na sua foto:</span>
+              {plano.equipamentosVistos.map((e) => <span key={e} className="trplanoiachip">{e}</span>)}
+            </div>
+          ) : null}
+        </div>
+      )}
+
       {nut && (
         <div className="trmetas">
           <div className="trmeta"><span className="trmetav">{nut.kcalMeta}</span><span className="trmetal">kcal/dia</span></div>
@@ -537,24 +637,300 @@ function Plano({ plano, anamnese, cargas, cargasHist, feitoHoje, onCarga, onTogg
         })}
       </div>
       <p className="trdica"><IcInfo size={14} /> Toque no exercício pra ver o vídeo. Marque ✓ quando fizer e anote a carga (kg) pra acompanhar sua evolução.</p>
+
+      <DiarioTreino feitosHoje={feitosTotal} totalHoje={todosEx.length} />
+    </div>
+  );
+}
+
+// ─── Diário: foto de check-in pra marcar o treino ─────────────────────────────
+// A pessoa tira uma foto pra registrar que treinou. Vira uma galeria de progresso
+// — ver a sequência de dias é o que mais engaja. Guarda no servidor (base64).
+function DiarioTreino({ feitosHoje, totalHoje }) {
+  const [fotos, setFotos] = useState(null); // null = carregando
+  const [salvando, setSalvando] = useState(false);
+  const [erro, setErro] = useState(null);
+  const [zoom, setZoom] = useState(null); // foto aberta em tela cheia
+  const inputRef = useRef(null);
+
+  const carregar = async () => {
+    try {
+      const { fotos } = await api.fotos();
+      setFotos(fotos);
+    } catch {
+      setFotos([]);
+    }
+  };
+  useEffect(() => { carregar(); }, []);
+
+  const feitoHojeJa = (fotos || []).some((f) => (f.em || "").slice(0, 10) === iso());
+
+  const capturar = async (file) => {
+    if (!file) return;
+    setErro(null);
+    setSalvando(true);
+    try {
+      const img = await lerImagemComprimida(file, 1000, 0.7);
+      const nota = totalHoje && feitosHoje >= totalHoje ? "Treino completo ✔" : feitosHoje ? `${feitosHoje}/${totalHoje} exercícios` : "";
+      const { foto } = await api.fotoSalvar(img, nota);
+      // guarda com a imagem localmente pra aparecer na hora (o GET não volta na inserção)
+      setFotos((fs) => [{ ...foto, imagem: img }, ...(fs || [])]);
+      buzz([12, 50, 20]);
+    } catch (e) {
+      setErro(semConexao(e) ? "Sem internet." : e.message);
+    } finally {
+      setSalvando(false);
+    }
+  };
+
+  const apagar = async (id) => {
+    setFotos((fs) => (fs || []).filter((f) => f.id !== id));
+    setZoom(null);
+    try { await api.fotoApagar(id); } catch { carregar(); }
+  };
+
+  const dataCurta = (em) => {
+    if (!em) return "";
+    const d = String(em).slice(0, 10).split("-"); // YYYY-MM-DD
+    return d.length === 3 ? `${d[2]}/${d[1]}` : "";
+  };
+
+  return (
+    <div className="trdiario">
+      <div className="trdiariohead">
+        <h4 className="trblocoh"><IcCamera size={16} /> Seu diário de treino</h4>
+        {fotos?.length ? <span className="trdiariocont">{fotos.length} {fotos.length === 1 ? "foto" : "fotos"}</span> : null}
+      </div>
+
+      <button
+        className={"trcheckin" + (feitoHojeJa ? " ja" : "")}
+        disabled={salvando}
+        onClick={() => inputRef.current?.click()}
+      >
+        <span className="trcheckinic">{feitoHojeJa ? <IcCheque size={20} /> : <IcCamera size={20} />}</span>
+        <span className="trcheckintxt">
+          <strong>{salvando ? "Salvando…" : feitoHojeJa ? "Treino de hoje registrado" : "Registrar treino de hoje"}</strong>
+          <span>{feitoHojeJa ? "Quer adicionar outra foto?" : "Tira uma foto pra marcar que você treinou"}</span>
+        </span>
+      </button>
+      <input ref={inputRef} type="file" accept="image/*" capture="environment" style={{ display: "none" }} onChange={(e) => { capturar(e.target.files?.[0]); e.target.value = ""; }} />
+      {erro && <p className="trerro">{erro}</p>}
+
+      {fotos === null ? (
+        <div className="trdiariogal"><div className="trdiarioskel" /><div className="trdiarioskel" /><div className="trdiarioskel" /></div>
+      ) : fotos.length === 0 ? (
+        <p className="trdiariovazio">Seu diário começa na primeira foto. Ver os dias enfileirados é o que dá gás pra continuar.</p>
+      ) : (
+        <div className="trdiariogal">
+          {fotos.map((f) => (
+            <button key={f.id} className="trdiariofoto" onClick={() => setZoom(f)}>
+              {f.imagem ? <img src={f.imagem} alt={"treino " + dataCurta(f.em)} loading="lazy" /> : <span className="trdiarioload" />}
+              <span className="trdiariodata">{dataCurta(f.em)}</span>
+            </button>
+          ))}
+        </div>
+      )}
+
+      {zoom && createPortal(
+        <div className="trzoom" onClick={() => setZoom(null)}>
+          <div className="trzoombox" onClick={(e) => e.stopPropagation()}>
+            <img src={zoom.imagem} alt={"treino " + dataCurta(zoom.em)} />
+            <div className="trzoombar">
+              <span>{dataCurta(zoom.em)}{zoom.nota ? ` · ${zoom.nota}` : ""}</span>
+              <button className="trzoomdel" onClick={() => apagar(zoom.id)} aria-label="Apagar foto"><IcLixo size={18} /></button>
+            </div>
+            <button className="trzoomx" onClick={() => setZoom(null)} aria-label="Fechar">×</button>
+          </div>
+        </div>,
+        document.body
+      )}
+    </div>
+  );
+}
+
+// ─── Dieta: typeform de preferências ──────────────────────────────────────────
+// Antes de montar o cardápio, a gente pergunta o que a pessoa gosta/não gosta de
+// comer, quantas refeições faz e a que horas, e a meta de peso. Uma pergunta por
+// tela — leve, com progresso, igual a anamnese do treino.
+function DietaTypeform({ anamnese, inicial, onPronto, onCancelar }) {
+  const [passo, setPasso] = useState(0);
+  const [p, setP] = useState(() => ({
+    metaPeso: inicial?.metaPeso || "",
+    gosta: inicial?.gosta || [],
+    naoGosta: inicial?.naoGosta || [],
+    refeicoes: inicial?.refeicoes?.length ? inicial.refeicoes : REFEICOES_PADRAO.filter((r) => ["Café da manhã", "Almoço", "Lanche da tarde", "Jantar"].includes(r.nome)),
+    outrosGosta: inicial?.outrosGosta || "",
+    rotina: inicial?.rotina || "",
+    restricoes: inicial?.restricoes || anamnese?.restricoesAlimentares || "",
+  }));
+  const set = (patch) => setP((x) => ({ ...x, ...patch }));
+
+  const toggleComida = (campo, nome) =>
+    setP((x) => {
+      const tem = x[campo].includes(nome);
+      const outro = campo === "gosta" ? "naoGosta" : "gosta";
+      return {
+        ...x,
+        [campo]: tem ? x[campo].filter((n) => n !== nome) : [...x[campo], nome],
+        // uma comida não pode estar nas duas listas ao mesmo tempo
+        [outro]: x[outro].filter((n) => n !== nome),
+      };
+    });
+
+  const toggleRefeicao = (r) =>
+    setP((x) => {
+      const tem = x.refeicoes.some((rr) => rr.nome === r.nome);
+      const refeicoes = tem
+        ? x.refeicoes.filter((rr) => rr.nome !== r.nome)
+        : [...x.refeicoes, r].sort((a, b) => a.horario.localeCompare(b.horario));
+      return { ...x, refeicoes };
+    });
+
+  const setHorario = (nome, horario) =>
+    setP((x) => ({ ...x, refeicoes: x.refeicoes.map((r) => (r.nome === nome ? { ...r, horario } : r)) }));
+
+  const objTxt = anamnese?.objetivo === "Emagrecimento" ? "chegar" : anamnese?.objetivo === "Ganho de massa" ? "chegar" : "manter em";
+
+  const passos = [
+    {
+      titulo: "Qual a sua meta de peso?",
+      conteudo: (
+        <>
+          <p className="trnota">Onde você quer {objTxt}. Deixa em branco se só quer comer melhor.</p>
+          <div className="trmetapeso">
+            <input className="trinput grande" type="text" inputMode="decimal" value={p.metaPeso} onChange={(e) => set({ metaPeso: e.target.value })} placeholder={anamnese?.peso ? `Ex.: ${Math.round((anamnese.peso || 60) - 4)}` : "Ex.: 60"} />
+            <span className="trmetakg">kg</span>
+          </div>
+          {anamnese?.peso ? <p className="trmetahoje">Hoje você está com <strong>{anamnese.peso} kg</strong>.</p> : null}
+        </>
+      ),
+    },
+    {
+      titulo: "O que você gosta de comer?",
+      conteudo: (
+        <>
+          <p className="trnota">Toca no que você curte — a IA vai priorizar essas comidas no seu cardápio.</p>
+          {COMIDAS.map((g) => (
+            <div key={g.grupo} className="trchipgrupo">
+              <span className="trchiptit">{g.grupo}</span>
+              <div className="trchips">
+                {g.itens.map((it) => (
+                  <button key={it} className={"trchip" + (p.gosta.includes(it) ? " on" : "")} onClick={() => toggleComida("gosta", it)}>
+                    {p.gosta.includes(it) && <IcCheque size={12} />}{it}
+                  </button>
+                ))}
+              </div>
+            </div>
+          ))}
+          <input className="trinput" value={p.outrosGosta} onChange={(e) => set({ outrosGosta: e.target.value })} placeholder="Outra comida favorita? (ex.: cuscuz, açaí)" />
+        </>
+      ),
+    },
+    {
+      titulo: "O que você não come?",
+      conteudo: (
+        <>
+          <p className="trnota">O que não curte, não pode ou quer evitar. A IA nunca vai colocar isso.</p>
+          {COMIDAS.map((g) => (
+            <div key={g.grupo} className="trchipgrupo">
+              <span className="trchiptit">{g.grupo}</span>
+              <div className="trchips">
+                {g.itens.map((it) => (
+                  <button key={it} className={"trchip evitar" + (p.naoGosta.includes(it) ? " on" : "")} onClick={() => toggleComida("naoGosta", it)}>
+                    {p.naoGosta.includes(it) && <span className="trchipx">×</span>}{it}
+                  </button>
+                ))}
+              </div>
+            </div>
+          ))}
+          <label className="trlabel">Alguma restrição ou alergia?</label>
+          <input className="trinput" value={p.restricoes} onChange={(e) => set({ restricoes: e.target.value })} placeholder="Ex.: sem lactose, vegetariano, alergia a camarão" />
+        </>
+      ),
+    },
+    {
+      titulo: "Suas refeições e horários",
+      conteudo: (
+        <>
+          <p className="trnota">Marque as refeições que você faz e ajuste os horários. É neles que o cardápio vai encaixar.</p>
+          <div className="trrefescolha">
+            {REFEICOES_PADRAO.map((r) => {
+              const ativa = p.refeicoes.find((rr) => rr.nome === r.nome);
+              return (
+                <div key={r.nome} className={"trrefpick" + (ativa ? " on" : "")}>
+                  <button className="trrefpickb" onClick={() => toggleRefeicao(r)}>
+                    <span className="trcheck">{ativa ? <IcCheque size={13} /> : null}</span>
+                    <span className="trrefpickic"><IconeRefeicao nome={r.nome} size={17} /></span>
+                    {r.nome}
+                  </button>
+                  {ativa && (
+                    <input className="trrefhora" type="time" value={ativa.horario} onChange={(e) => setHorario(r.nome, e.target.value)} />
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        </>
+      ),
+    },
+    {
+      titulo: "Como é a sua rotina?",
+      conteudo: (
+        <>
+          <p className="trnota">Conta em uma frase — ajuda a IA a caber a comida no seu dia (opcional).</p>
+          <textarea className="trinput area" rows={4} value={p.rotina} onChange={(e) => set({ rotina: e.target.value })} placeholder="Ex.: acordo 6h, treino de manhã, almoço fora do trabalho, gosto de cozinhar à noite." />
+        </>
+      ),
+    },
+  ];
+
+  const atual = passos[passo];
+  const ultimo = passo === passos.length - 1;
+
+  const finalizar = () => {
+    const prefs = {
+      ...p,
+      metaPeso: Number(String(p.metaPeso).replace(",", ".")) || null,
+      refeicoes: [...p.refeicoes].sort((a, b) => a.horario.localeCompare(b.horario)),
+    };
+    onPronto(prefs);
+  };
+
+  return (
+    <div className="tranam dietaform">
+      <div className="tranamtopo">
+        <div className="tranamdots">{passos.map((_, i) => <span key={i} className={"tranamdot" + (i === passo ? " on" : i < passo ? " feito" : "")} />)}</div>
+        <button className="trlink" onClick={onCancelar}>Cancelar</button>
+      </div>
+      <h2 className="tranamh">{atual.titulo}</h2>
+      <div className="tranamcont">{atual.conteudo}</div>
+      <div className="tranambtns">
+        {passo > 0 && <button className="trbtn ghost" onClick={() => setPasso((s) => s - 1)}>Voltar</button>}
+        {!ultimo ? (
+          <button className="trbtn" onClick={() => setPasso((s) => s + 1)}>Continuar</button>
+        ) : (
+          <button className="trbtn" onClick={finalizar}>Montar meu cardápio</button>
+        )}
+      </div>
     </div>
   );
 }
 
 // ─── Dieta ────────────────────────────────────────────────────────────────────
-function Dieta({ anamnese, dieta, onDieta, iaAtiva, temAnamnese, onFazerAnamnese }) {
+function Dieta({ anamnese, dieta, onDieta, prefs, onPrefs, iaAtiva, temAnamnese, onFazerAnamnese }) {
   const [gerando, setGerando] = useState(false);
   const [erro, setErro] = useState(null);
   const [ajuste, setAjuste] = useState("");
   const [buscando, setBuscando] = useState("");
   const [achados, setAchados] = useState([]);
+  const [form, setForm] = useState(false); // typeform de preferências aberto?
   const nut = calcNutri(anamnese);
 
-  const gerar = async (pedido) => {
+  const gerar = async (prefsUsar, pedido) => {
     setErro(null);
     setGerando(true);
     try {
-      const { dieta: nova } = await api.iaDieta(anamnese, pedido);
+      const { dieta: nova } = await api.iaDieta(anamnese, prefsUsar || prefs || undefined, pedido);
       onDieta(nova);
       setAjuste("");
     } catch (e) {
@@ -585,6 +961,22 @@ function Dieta({ anamnese, dieta, onDieta, iaAtiva, temAnamnese, onFazerAnamnese
         <p className="trintrop">Preciso saber seu objetivo, peso e altura pra calcular suas calorias. Leva um minuto.</p>
         <button className="trbtn grande" onClick={onFazerAnamnese}>Responder e calcular</button>
       </div>
+    );
+  }
+
+  // Typeform de preferências (abre antes do 1º cardápio ou quando a pessoa quer mudar)
+  if (form) {
+    return (
+      <DietaTypeform
+        anamnese={anamnese}
+        inicial={prefs}
+        onCancelar={() => setForm(false)}
+        onPronto={(novasPrefs) => {
+          onPrefs(novasPrefs);
+          setForm(false);
+          gerar(novasPrefs);
+        }}
+      />
     );
   }
 
@@ -626,18 +1018,35 @@ function Dieta({ anamnese, dieta, onDieta, iaAtiva, temAnamnese, onFazerAnamnese
         </div>
       ) : !dieta ? (
         <div className="trdietavazio">
-          <p>Quer que eu monte seu cardápio do dia, com comida de verdade e nas suas calorias?</p>
-          <button className="trbtn grande" disabled={gerando || !iaAtiva} onClick={() => gerar()}>
-            {gerando ? "Montando seu cardápio…" : "Montar meu cardápio"}
+          <div className="trdietavazioic"><IcMaca size={30} /></div>
+          <p className="trdietavaziot">Vou montar seu cardápio do jeito que você come</p>
+          <p className="trdietavaziod">Antes, me conta o que você gosta, seus horários e sua meta. Aí a IA monta um cardápio com comida de verdade, nas suas calorias, no seu ritmo.</p>
+          <button className="trbtn grande" disabled={!iaAtiva} onClick={() => setForm(true)}>
+            Personalizar e montar
           </button>
+          {prefs && (
+            <button className="trlink" style={{ marginTop: 12 }} disabled={gerando} onClick={() => gerar()}>
+              {gerando ? "Montando…" : "Usar minhas preferências de antes"}
+            </button>
+          )}
           {!iaAtiva && <p className="trnota" style={{ marginTop: 10 }}>A IA precisa estar ligada no servidor pra montar o cardápio.</p>}
         </div>
       ) : (
         <>
           <div className="trcardaptopo">
             <h3 className="trcardaph">Seu cardápio</h3>
-            <button className="trlink" disabled={gerando} onClick={() => gerar()}>Refazer</button>
+            <div className="trcardapacoes">
+              <button className="trlink" disabled={gerando} onClick={() => setForm(true)}>Mudar preferências</button>
+              <button className="trlink" disabled={gerando} onClick={() => gerar()}>Refazer</button>
+            </div>
           </div>
+          {prefs && (prefs.gosta?.length || prefs.metaPeso) ? (
+            <div className="trprefsresumo">
+              {prefs.metaPeso ? <span className="trprefchip"><IcAlvo size={12} /> meta {prefs.metaPeso} kg</span> : null}
+              {(prefs.gosta || []).slice(0, 4).map((g) => <span key={g} className="trprefchip">{g}</span>)}
+              {(prefs.gosta || []).length > 4 ? <span className="trprefchip">+{prefs.gosta.length - 4}</span> : null}
+            </div>
+          ) : null}
           {dieta.resumo && <p className="trcardapresumo">{dieta.resumo}</p>}
           {dieta.totais && (
             <div className="trcardaptotais">
@@ -669,7 +1078,7 @@ function Dieta({ anamnese, dieta, onDieta, iaAtiva, temAnamnese, onFazerAnamnese
 
           <div className="trajuste">
             <input className="trcampo" value={ajuste} onChange={(e) => setAjuste(e.target.value)} placeholder="Ajustar (ex.: mais barato, sem lactose)" />
-            <button className="trmandar" disabled={gerando || !ajuste.trim()} onClick={() => gerar(ajuste)} aria-label="Ajustar cardápio"><IcTroca size={20} /></button>
+            <button className="trmandar" disabled={gerando || !ajuste.trim()} onClick={() => gerar(undefined, ajuste)} aria-label="Ajustar cardápio"><IcTroca size={20} /></button>
           </div>
         </>
       )}
@@ -1261,6 +1670,95 @@ const css = `
 .trevocol{flex:1;display:flex;align-items:flex-end;justify-content:center;height:100%;}
 .trevobar{width:100%;max-width:26px;border-radius:6px 6px 0 0;background:linear-gradient(180deg,var(--ci),var(--az));box-shadow:0 3px 8px -3px rgba(31,95,230,.5);transition:height .5s cubic-bezier(.2,.8,.2,1);}
 .trevotxt{font-size:13px;line-height:1.5;color:var(--mut);margin:10px 0 0;}
+
+/* ── Foto dos aparelhos na anamnese ── */
+.trfotoaparelhos{margin-top:16px;}
+.trfotobtn{display:flex;align-items:center;gap:12px;width:100%;padding:14px;border:1.5px dashed rgba(31,95,230,.4);border-radius:15px;background:linear-gradient(180deg,#F3F7FF,#EAF1FF);cursor:pointer;transition:border-color .2s,transform .12s;text-align:left;}
+.trfotobtn:active{transform:scale(.98);}
+.trfotobtn svg{flex:none;color:var(--az);}
+.trfotobtn span{font-size:13px;line-height:1.45;color:var(--mut);}
+.trfotobtn strong{color:var(--ink);font-weight:700;display:block;}
+.trfotoprev{position:relative;border-radius:15px;overflow:hidden;box-shadow:0 10px 26px -12px rgba(12,26,51,.5);animation:trpop .3s cubic-bezier(.2,.9,.3,1.4);}
+.trfotoprev img{display:block;width:100%;max-height:220px;object-fit:cover;}
+.trfotox{position:absolute;top:8px;right:8px;width:32px;height:32px;border-radius:50%;border:none;background:rgba(12,26,51,.65);-webkit-backdrop-filter:blur(4px);backdrop-filter:blur(4px);color:#fff;font-size:20px;line-height:1;cursor:pointer;display:flex;align-items:center;justify-content:center;}
+.trfotook{position:absolute;left:0;right:0;bottom:0;display:flex;align-items:center;gap:6px;padding:9px 12px;background:linear-gradient(0deg,rgba(12,26,51,.82),transparent);color:#fff;font-size:12.5px;font-weight:600;}
+.trfotook svg{color:#5FE0B0;flex:none;}
+
+/* ── Selo "montado pela IA" no plano ── */
+.trplanoia{background:linear-gradient(120deg,#EAF1FF,#E4F7FA);border:1px solid rgba(31,95,230,.16);border-radius:16px;padding:13px 15px;margin-bottom:14px;animation:trcardin .4s ease;}
+.trplanoiaselo{display:inline-flex;align-items:center;gap:6px;font-size:11px;font-weight:800;letter-spacing:.04em;text-transform:uppercase;color:var(--az);}
+.trplanoiaselo svg{color:var(--ci);}
+.trplanoiaobs{font-size:13.5px;line-height:1.5;color:var(--ink);margin:7px 0 0;}
+.trplanoiaeq{display:flex;align-items:center;flex-wrap:wrap;gap:6px;margin-top:9px;font-size:12px;color:var(--mut);}
+.trplanoiaeq>svg{color:var(--az);flex:none;}
+.trplanoiachip{background:#fff;border:1px solid var(--faint);border-radius:99px;padding:3px 10px;font-size:11.5px;font-weight:600;color:var(--ink);}
+
+/* ── Diário de treino (foto de check-in + galeria) ── */
+.trdiario{margin-top:22px;padding-top:18px;border-top:1px solid var(--faint);}
+.trdiariohead{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;}
+.trblocoh{display:flex;align-items:center;gap:8px;font-family:'Bricolage Grotesque',sans-serif;font-size:16px;font-weight:800;margin:0;letter-spacing:-.01em;}
+.trblocoh svg{color:var(--az);}
+.trdiariocont{font-size:12px;font-weight:600;color:var(--mut);}
+.trcheckin{display:flex;align-items:center;gap:13px;width:100%;padding:14px;border:none;border-radius:16px;background:linear-gradient(120deg,var(--az),var(--ci));color:#fff;cursor:pointer;text-align:left;box-shadow:0 12px 26px -12px rgba(31,95,230,.7);transition:transform .12s,filter .15s;}
+.trcheckin:hover:not(:disabled){filter:brightness(1.05);}
+.trcheckin:active:not(:disabled){transform:scale(.98);}
+.trcheckin:disabled{opacity:.6;}
+.trcheckin.ja{background:linear-gradient(120deg,#1FA36E,#3FD0A6);box-shadow:0 12px 26px -12px rgba(31,163,110,.7);}
+.trcheckinic{flex:none;width:44px;height:44px;border-radius:13px;background:rgba(255,255,255,.18);display:flex;align-items:center;justify-content:center;}
+.trcheckintxt{display:flex;flex-direction:column;gap:2px;}
+.trcheckintxt strong{font-size:15px;font-weight:700;}
+.trcheckintxt span{font-size:12.5px;opacity:.9;}
+.trdiariovazio{font-size:13px;color:var(--mut);line-height:1.5;margin:12px 0 0;text-align:center;padding:6px 10px;}
+.trdiariogal{display:flex;gap:9px;overflow-x:auto;padding:14px 2px 4px;scroll-snap-type:x proximity;-webkit-overflow-scrolling:touch;}
+.trdiariogal::-webkit-scrollbar{height:0;}
+.trdiariofoto{position:relative;flex:none;width:104px;height:132px;border-radius:14px;overflow:hidden;border:none;padding:0;cursor:pointer;scroll-snap-align:start;background:#E2ECFC;box-shadow:0 6px 16px -8px rgba(12,26,51,.4);transition:transform .15s;}
+.trdiariofoto:active{transform:scale(.96);}
+.trdiariofoto img{width:100%;height:100%;object-fit:cover;display:block;}
+.trdiariodata{position:absolute;left:0;right:0;bottom:0;padding:6px 8px;background:linear-gradient(0deg,rgba(12,26,51,.8),transparent);color:#fff;font-family:'Space Mono',monospace;font-size:11px;font-weight:700;text-align:left;}
+.trdiarioskel{flex:none;width:104px;height:132px;border-radius:14px;background:linear-gradient(100deg,#E7EEFA 30%,#F2F6FD 50%,#E7EEFA 70%);background-size:200% 100%;animation:trshine 1.4s linear infinite;}
+.trdiarioload{position:absolute;inset:0;background:#E2ECFC;}
+/* zoom da foto do diário */
+.trzoom{position:fixed;inset:0;z-index:60;background:rgba(6,13,28,.9);-webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px);display:flex;align-items:center;justify-content:center;padding:20px;animation:trpop .2s ease;}
+.trzoombox{position:relative;max-width:440px;width:100%;border-radius:18px;overflow:hidden;box-shadow:0 30px 60px -20px rgba(0,0,0,.7);}
+.trzoombox img{display:block;width:100%;max-height:74vh;object-fit:contain;background:#0C1A33;}
+.trzoombar{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:12px 14px;background:#0C1A33;color:#fff;font-size:13px;font-weight:600;}
+.trzoomdel{background:rgba(255,255,255,.1);border:none;color:#FF9B94;width:38px;height:38px;border-radius:11px;display:flex;align-items:center;justify-content:center;cursor:pointer;}
+.trzoomx{position:absolute;top:10px;right:10px;width:36px;height:36px;border-radius:50%;border:none;background:rgba(12,26,51,.55);color:#fff;font-size:22px;line-height:1;cursor:pointer;}
+
+/* ── Typeform de dieta ── */
+.dietaform .tranamcont{min-height:200px;}
+.trmetapeso{display:flex;align-items:center;gap:10px;margin-top:6px;}
+.trinput.grande{font-size:30px;font-family:'Space Mono',monospace;font-weight:700;text-align:center;letter-spacing:-.02em;max-width:170px;min-height:64px;}
+.trmetakg{font-family:'Bricolage Grotesque',sans-serif;font-size:20px;font-weight:800;color:var(--mut);}
+.trmetahoje{font-size:13px;color:var(--mut);margin:12px 0 0;}
+.trinput.area{min-height:auto;resize:vertical;line-height:1.5;font-size:15px;}
+.trchipgrupo{margin-bottom:14px;}
+.trchiptit{display:block;font-size:11px;letter-spacing:.05em;text-transform:uppercase;color:var(--mut);font-weight:700;margin-bottom:8px;}
+.trchips{display:flex;flex-wrap:wrap;gap:7px;}
+.trchip{display:inline-flex;align-items:center;gap:5px;min-height:38px;padding:0 13px;border:1.5px solid var(--faint);background:var(--surf);border-radius:99px;font-family:Inter,sans-serif;font-size:13.5px;font-weight:600;color:var(--ink);cursor:pointer;transition:all .16s;}
+.trchip:active{transform:scale(.95);}
+.trchip.on{border-color:var(--vd);background:#E5F7EF;color:#127A50;}
+.trchip.on svg{color:var(--vd);}
+.trchip.evitar.on{border-color:#E8722C;background:#FDEEE3;color:#B4531A;}
+.trchipx{font-size:15px;line-height:1;font-weight:800;}
+.trrefescolha{display:flex;flex-direction:column;gap:9px;}
+.trrefpick{display:flex;align-items:center;gap:8px;padding:5px;border:1.5px solid var(--faint);border-radius:14px;background:var(--surf);transition:border-color .2s,background .2s;}
+.trrefpick.on{border-color:var(--az);background:#EAF1FF;}
+.trrefpickb{flex:1;display:flex;align-items:center;gap:10px;background:transparent;border:none;padding:9px;font-family:Inter,sans-serif;font-size:14px;font-weight:600;color:var(--ink);cursor:pointer;text-align:left;}
+.trrefpickic{width:30px;height:30px;border-radius:9px;background:#E2ECFC;color:var(--az);display:flex;align-items:center;justify-content:center;flex:none;}
+.trrefpick.on .trcheck{background:var(--az);border-color:var(--az);}
+.trrefhora{flex:none;width:96px;min-height:42px;border:1px solid var(--faint);border-radius:10px;padding:0 8px;font-family:'Space Mono',monospace;font-size:14px;font-weight:700;color:var(--az);background:#fff;text-align:center;}
+/* resumo das preferências no topo do cardápio */
+.trcardapacoes{display:flex;gap:2px;}
+.trprefsresumo{display:flex;flex-wrap:wrap;gap:6px;margin:-4px 0 14px;}
+.trprefchip{display:inline-flex;align-items:center;gap:4px;background:#E5F7EF;color:#127A50;border-radius:99px;padding:3px 10px;font-size:11.5px;font-weight:600;}
+.trprefchip svg{color:var(--vd);}
+/* estado vazio da dieta, mais premium */
+.trdietavazio{text-align:center;padding:20px 10px;}
+.trdietavazioic{width:64px;height:64px;margin:0 auto 14px;border-radius:18px;background:linear-gradient(135deg,#1FA36E,#3FD0A6);color:#fff;display:flex;align-items:center;justify-content:center;box-shadow:0 14px 28px -12px rgba(31,163,110,.6);}
+.trdietavaziot{font-family:'Bricolage Grotesque',sans-serif;font-size:19px;font-weight:800;letter-spacing:-.01em;margin:0 0 6px;color:var(--ink);}
+.trdietavaziod{font-size:13.5px;line-height:1.55;color:var(--mut);max-width:330px;margin:0 auto 18px;}
+
 @media (prefers-reduced-motion:reduce){.tr *,.tr *::before,.tr *::after{animation:none!important;transition:none!important;}}
 @media (max-width:380px){.trescolhas{grid-template-columns:1fr;}.trmetav{font-size:17px;}.trmacrokcal{font-size:32px;}}
 `;

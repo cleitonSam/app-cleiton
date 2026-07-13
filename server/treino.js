@@ -118,7 +118,7 @@ const SPLITS = {
 };
 
 // ─── Objetivo → séries / repetições / descanso ────────────────────────────────
-function prescricao(objetivo) {
+export function prescricao(objetivo) {
   switch (objetivo) {
     case "Ganho de massa":
     case "Hipertrofia":
@@ -308,12 +308,51 @@ export function calcularNutricao(anamnese = {}) {
 }
 
 // índice compacto de exercícios (nome+grupo) pra dar de contexto à IA sem estourar tokens
-export function indiceParaIA() {
+export function indiceParaIA(porGrupoN = 25) {
   const porG = {};
   for (const e of EXERCICIOS) {
     (porG[e.grupo] ||= []).push(e.nome);
   }
-  // limita a ~25 por grupo pra não inflar
-  const linhas = Object.entries(porG).map(([g, nomes]) => `${g}: ${[...new Set(nomes)].slice(0, 25).join(", ")}`);
+  const linhas = Object.entries(porG).map(([g, nomes]) => `${g}: ${[...new Set(nomes)].slice(0, porGrupoN).join(", ")}`);
   return linhas.join("\n");
+}
+
+// ─── Casar o nome que a IA escolheu com um exercício REAL da biblioteca ────────
+// A IA pode escrever "Supino reto" e a biblioteca ter "Supino Reto com Barra".
+// Casa por: igual → contém → sobreposição de palavras. Preferindo o mesmo grupo.
+const semAcento = (s) =>
+  (s || "").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-z0-9 ]/g, " ").replace(/\s+/g, " ").trim();
+
+const PALAVRA_VAZIA = new Set(["de", "com", "na", "no", "da", "do", "e", "o", "a", "em", "para", "the", "of"]);
+
+export function casarExercicio(nome, grupo) {
+  const alvo = semAcento(nome);
+  if (!alvo) return null;
+  const tokensAlvo = alvo.split(" ").filter((w) => w.length > 2 && !PALAVRA_VAZIA.has(w));
+
+  let melhor = null;
+  let melhorNota = 0;
+  const universo = grupo && porGrupo.has(grupo) ? porGrupo.get(grupo) : EXERCICIOS;
+
+  const avaliar = (lista, bonusGrupo) => {
+    for (const e of lista) {
+      const nomeEx = semAcento(e.nome);
+      let nota = 0;
+      if (nomeEx === alvo) nota = 100;
+      else if (nomeEx.includes(alvo) || alvo.includes(nomeEx)) nota = 60;
+      else {
+        const tokensEx = new Set(nomeEx.split(" "));
+        const comuns = tokensAlvo.filter((w) => tokensEx.has(w)).length;
+        if (comuns) nota = 20 + comuns * 8;
+      }
+      if (!nota) continue;
+      nota += bonusGrupo; // preferir o grupo certo
+      nota += pontuar(e.grupo, e) * 0.1; // desempata pelo carro-chefe
+      if (nota > melhorNota) { melhorNota = nota; melhor = e; }
+    }
+  };
+
+  avaliar(universo, 10);
+  if (melhorNota < 40) avaliar(EXERCICIOS, 0); // não achou bom no grupo? procura em tudo
+  return melhorNota >= 28 ? melhor : null;
 }

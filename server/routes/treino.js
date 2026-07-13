@@ -1,5 +1,6 @@
 import { exigeLogin } from "../guards.js";
 import { pegarVideo } from "../video.js";
+import { q } from "../db.js";
 import {
   buscarAlimentos,
   buscarExercicio,
@@ -131,6 +132,60 @@ export default async function rotasTreino(app) {
       }
 
       return reply.code(200).send(buf);
+    }
+  );
+
+  // ─── Fotos de check-in (o "diário": foto pra marcar que treinou) ────────────
+  app.post(
+    "/treino/foto",
+    {
+      bodyLimit: 4 * 1024 * 1024,
+      schema: {
+        body: {
+          type: "object",
+          required: ["imagem"],
+          properties: {
+            imagem: { type: "string", maxLength: 3_000_000 },
+            nota: { type: "string", maxLength: 200 },
+          },
+        },
+      },
+    },
+    async (req, reply) => {
+      if (!req.body.imagem.startsWith("data:image/")) {
+        return reply.code(400).send({ erro: "Imagem inválida." });
+      }
+      const { rows } = await q(
+        "insert into linha.treino_fotos (user_id, imagem, nota) values ($1, $2, $3) returning id, em, nota",
+        [req.usuario.id, req.body.imagem, req.body.nota || null]
+      );
+
+      // mantém no máximo 40 fotos por pessoa (apaga as mais antigas)
+      await q(
+        `delete from linha.treino_fotos where user_id = $1 and id not in (
+           select id from linha.treino_fotos where user_id = $1 order by em desc limit 40
+         )`,
+        [req.usuario.id]
+      );
+
+      return { ok: true, foto: rows[0] };
+    }
+  );
+
+  app.get("/treino/fotos", async (req) => {
+    const { rows } = await q(
+      "select id, imagem, nota, em from linha.treino_fotos where user_id = $1 order by em desc limit 40",
+      [req.usuario.id]
+    );
+    return { fotos: rows };
+  });
+
+  app.delete(
+    "/treino/foto/:id",
+    { schema: { params: { type: "object", properties: { id: { type: "integer" } } } } },
+    async (req) => {
+      await q("delete from linha.treino_fotos where id = $1 and user_id = $2", [req.params.id, req.usuario.id]);
+      return { ok: true };
     }
   );
 }

@@ -96,6 +96,15 @@ const PHRASES = [
   { cat: "recomeco", text: "Cuidar de você também é produtividade." },
   { cat: "recomeco", text: "Um passo pequeno hoje vale mais que um plano perfeito amanhã." },
   { cat: "recomeco", text: "Escuridão nenhuma apaga quem decide acender de novo." },
+  { cat: "treino", text: "O treino que você não quer fazer é o que mais muda você." },
+  { cat: "treino", text: "Ninguém vê o processo. Todo mundo vê o resultado." },
+  { cat: "treino", text: "Disciplina é lembrar o que você quer quando bate a preguiça." },
+  { cat: "treino", text: "O peso não fica mais leve. Você fica mais forte." },
+  { cat: "treino", text: "Corpo muda no silêncio de quem aparece todo dia." },
+  { cat: "treino", text: "Uma série de cada vez. Um dia de cada vez." },
+  { cat: "treino", text: "Não treina pelo espelho de hoje. Treina pelo de daqui a um ano." },
+  { cat: "treino", text: "Suor de hoje é o orgulho de amanhã." },
+  { cat: "treino", text: "Foi difícil? Ótimo. É aí que cresce." },
 ];
 const WEEK_PHRASE = "7 dias. 7 vitórias. Semana fechada. Bora pra próxima.";
 
@@ -223,12 +232,27 @@ function drawPhoenixEmblem(ctx, cx, topY, k, flat) {
   ctx.restore();
 }
 
-function drawStory(canvas, bg, text, handle, label) {
+// desenha a foto cobrindo o quadro (object-fit: cover) + escurece pra ler o texto
+function paintFoto(ctx, W, H, img) {
+  const r = Math.max(W / img.width, H / img.height);
+  const w = img.width * r, h = img.height * r;
+  ctx.drawImage(img, (W - w) / 2, (H - h) / 2, w, h);
+  // scrim: escurece o topo e a base (onde ficam selo, frase e assinatura)
+  const g = ctx.createLinearGradient(0, 0, 0, H);
+  g.addColorStop(0, "rgba(8,17,31,0.72)");
+  g.addColorStop(0.42, "rgba(8,17,31,0.32)");
+  g.addColorStop(0.72, "rgba(8,17,31,0.55)");
+  g.addColorStop(1, "rgba(8,17,31,0.9)");
+  ctx.fillStyle = g; ctx.fillRect(0, 0, W, H);
+}
+
+function drawStory(canvas, bg, text, handle, label, fotoImg) {
   const W = 1080, H = 1920;
   canvas.width = W; canvas.height = H;
   const ctx = canvas.getContext("2d");
-  paintBg(ctx, W, H, bg);
-  const light = bg.text && bg.text !== "#fff" && bg.text !== "#ffffff";
+  if (fotoImg) paintFoto(ctx, W, H, fotoImg);
+  else paintBg(ctx, W, H, bg);
+  const light = !fotoImg && bg.text && bg.text !== "#fff" && bg.text !== "#ffffff";
   const ink = light ? "#0C1A33" : "#FFFFFF";
   const accent = light ? "#1F5FE6" : "#3FD0E6";
   const X = 96;
@@ -298,7 +322,7 @@ function drawStory(canvas, bg, text, handle, label) {
 }
 
 function Stories({ weekComplete, handle, onHandle }) {
-  const cats = [["todas", "Todas"], ["empresa", "Empresa"], ["diaadia", "Dia a dia"], ["recomeco", "Recomeço"]];
+  const cats = [["todas", "Todas"], ["treino", "Treino"], ["empresa", "Empresa"], ["diaadia", "Dia a dia"], ["recomeco", "Recomeço"]];
   const [cat, setCat] = useState("todas");
   const [pi, setPi] = useState(0);
   const [bgi, setBgi] = useState(0);
@@ -306,15 +330,38 @@ function Stories({ weekComplete, handle, onHandle }) {
   const [url, setUrl] = useState("");
   const [blob, setBlob] = useState(null);
   const [aviso, setAviso] = useState(null);
+  const [fotos, setFotos] = useState([]); // fotos do diário de treino, pra usar de fundo
+  const [fotoSel, setFotoSel] = useState(null); // índice da foto escolhida (ou null = usa gradiente)
+  const fotoImgRef = useRef(null); // Image já carregada pra desenhar no canvas
+
+  // Puxa as fotos de progresso do treino — viram opção de fundo do story.
+  useEffect(() => {
+    let vivo = true;
+    api.fotos().then(({ fotos }) => vivo && setFotos(fotos || [])).catch(() => {});
+    return () => { vivo = false; };
+  }, []);
 
   const list = cat === "todas" ? PHRASES : PHRASES.filter((p) => p.cat === cat);
   const current = custom.trim() ? null : (list.length ? list[pi % list.length] : null);
   const frase = custom.trim() || (current ? current.text : "");
-  const catNames = { empresa: "Empresa", diaadia: "Dia a dia", recomeco: "Recomeço" };
+  const catNames = { treino: "Treino", empresa: "Empresa", diaadia: "Dia a dia", recomeco: "Recomeço" };
   const label = custom.trim()
     ? (custom.trim() === WEEK_PHRASE ? "Semana fechada" : "Minha frase")
     : (current ? catNames[current.cat] || "Linha" : "Linha");
   const bg = BGS[bgi];
+  const fotoAtual = fotoSel != null ? fotos[fotoSel] : null;
+  const [redraw, setRedraw] = useState(0);
+
+  // Carrega a foto escolhida como Image (o canvas precisa dela pronta pra desenhar).
+  useEffect(() => {
+    if (!fotoAtual?.imagem) { fotoImgRef.current = null; return; }
+    let vivo = true;
+    const img = new Image();
+    img.onload = () => { if (vivo) { fotoImgRef.current = img; setRedraw((n) => n + 1); } };
+    img.onerror = () => { if (vivo) { fotoImgRef.current = null; setRedraw((n) => n + 1); } };
+    img.src = fotoAtual.imagem;
+    return () => { vivo = false; };
+  }, [fotoAtual]);
 
   // Só redesenha quando a digitação PARA.
   // Antes o efeito dependia direto do texto: cada caractere redesenhava um canvas
@@ -329,10 +376,11 @@ function Stories({ weekComplete, handle, onHandle }) {
   useEffect(() => {
     const c = document.createElement("canvas");
     let vivo = true;
+    const foto = fotoSel != null ? fotoImgRef.current : null;
 
     const desenhar = () => {
       if (!vivo) return;
-      drawStory(c, bg, fraseDesenho || " ", handle, label);
+      drawStory(c, bg, fraseDesenho || " ", handle, label, foto);
       try {
         setUrl(c.toDataURL("image/png"));
       } catch {
@@ -355,10 +403,10 @@ function Stories({ weekComplete, handle, onHandle }) {
     }
 
     return () => { vivo = false; };
-  }, [fraseDesenho, bgi, handle, label]); // eslint-disable-line
+  }, [fraseDesenho, bgi, handle, label, fotoSel, redraw]); // eslint-disable-line
 
   const nextPhrase = () => { setCustom(""); setPi((i) => i + 1); };
-  const useWeek = () => { setCustom(WEEK_PHRASE); setBgi(BGS.findIndex((b) => b.name === "Fênix")); };
+  const useWeek = () => { setCustom(WEEK_PHRASE); setFotoSel(null); setBgi(BGS.findIndex((b) => b.name === "Fênix")); };
 
   // Salvar a imagem.
   // O jeito antigo (<a download> com data: URL) é ignorado pelo Safari e, dentro
@@ -417,8 +465,24 @@ function Stories({ weekComplete, handle, onHandle }) {
       <section className="card">
         <span className="ctrllabel">Fundo</span>
         <div className="bgrow">
-          {BGS.map((b, i) => <button key={i} className={"bgsw" + (bgi === i ? " bgsw-on" : "")} style={swStyle(b)} onClick={() => setBgi(i)} aria-label={b.name} />)}
+          {BGS.map((b, i) => <button key={i} className={"bgsw" + (bgi === i && fotoSel == null ? " bgsw-on" : "")} style={swStyle(b)} onClick={() => { setFotoSel(null); setBgi(i); }} aria-label={b.name} />)}
         </div>
+        {fotos.length > 0 && (
+          <>
+            <span className="ctrllabel">Ou sua foto de treino</span>
+            <div className="bgrow fotorow">
+              {fotos.slice(0, 12).map((f, i) => (
+                <button
+                  key={f.id}
+                  className={"bgsw fotosw" + (fotoSel === i ? " bgsw-on" : "")}
+                  style={{ backgroundImage: `url(${f.imagem})` }}
+                  onClick={() => setFotoSel(fotoSel === i ? null : i)}
+                  aria-label={"Foto de treino " + (i + 1)}
+                />
+              ))}
+            </div>
+          </>
+        )}
         <span className="ctrllabel">Seu @ do Instagram (aparece no story)</span>
         {/* Sem autocapitalize o teclado do celular manda "@Cleiton" — e o erro ia
             queimado dentro da imagem. */}
@@ -1806,8 +1870,10 @@ const css = `
 .bigbtn{width:100%;background:${C.blue};color:#fff;border:none;border-radius:12px;padding:13px;font-weight:600;font-size:15px;cursor:pointer;font-family:Inter,sans-serif;margin-bottom:18px;}
 .ctrllabel{display:block;font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:${C.muted};font-weight:600;margin:0 0 8px;}
 .bgrow{display:flex;gap:8px;margin-bottom:18px;flex-wrap:wrap;}
-.bgsw{width:44px;height:44px;border-radius:10px;border:2px solid transparent;cursor:pointer;}
+.bgsw{width:44px;height:44px;border-radius:10px;border:2px solid transparent;cursor:pointer;transition:transform .12s;}
+.bgsw:active{transform:scale(.92);}
 .bgsw-on{border-color:${C.ink};box-shadow:0 0 0 2px #fff inset;}
+.fotorow .fotosw{width:44px;height:60px;background-size:cover;background-position:center;border-radius:10px;}
 .storyinput{width:100%;min-height:64px;border:1px solid ${C.faint};border-radius:11px;padding:12px 13px;font-family:Inter,sans-serif;font-size:16px;color:${C.ink};background:${C.surface};outline:none;resize:vertical;line-height:1.4;margin-bottom:16px;}
 .storyinput:focus{border-color:${C.blue};}
 .savebtn{width:100%;background:${C.cyan};color:#04323a;border:none;border-radius:12px;padding:14px;font-weight:800;font-size:15px;cursor:pointer;font-family:Inter,sans-serif;}

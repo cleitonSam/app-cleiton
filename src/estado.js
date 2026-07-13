@@ -120,7 +120,7 @@ export function estadoPadrao() {
     // Treino: anamnese, plano gerado, cardápio, cargas por exercício, histórico de
     // carga (pra ver o peso subir) e o que foi feito hoje. Sincroniza entre
     // aparelhos. Os chats de IA NÃO ficam aqui (grandes e efêmeros).
-    treino: { anamnese: null, plano: null, dieta: null, cargas: {}, cargasHist: {}, feito: { data: "", ids: [] } },
+    treino: { anamnese: null, plano: null, dieta: null, dietaPrefs: null, cargas: {}, cargasHist: {}, feito: { data: "", ids: [] } },
   };
 }
 
@@ -294,6 +294,7 @@ export function normalizar(bruto) {
       anamnese: t.anamnese && typeof t.anamnese === "object" ? t.anamnese : null,
       plano: t.plano && typeof t.plano === "object" ? t.plano : null,
       dieta: t.dieta && typeof t.dieta === "object" ? t.dieta : null,
+      dietaPrefs: t.dietaPrefs && typeof t.dietaPrefs === "object" ? t.dietaPrefs : null,
       cargas,
       cargasHist,
       feito,

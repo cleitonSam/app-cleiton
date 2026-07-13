@@ -83,7 +83,13 @@ export const api = {
   treinoGerar: (anamnese) => chamar("/treino/gerar", { metodo: "POST", corpo: { anamnese } }),
   nutriAlimentos: (q) => chamar(`/nutri/alimentos?q=${encodeURIComponent(q)}`),
   iaStatus: () => chamar("/ia/status"),
-  iaDieta: (anamnese, pedido) => chamar("/ia/dieta", { metodo: "POST", corpo: { anamnese, pedido } }),
+  iaDieta: (anamnese, prefs, pedido) => chamar("/ia/dieta", { metodo: "POST", corpo: { anamnese, prefs, pedido } }),
+  iaPlano: (anamnese, imagem) => chamar("/ia/plano", { metodo: "POST", corpo: { anamnese, imagem } }),
+
+  // fotos de check-in (diário)
+  fotoSalvar: (imagem, nota) => chamar("/treino/foto", { metodo: "POST", corpo: { imagem, nota } }),
+  fotos: () => chamar("/treino/fotos"),
+  fotoApagar: (id) => chamar(`/treino/foto/${id}`, { metodo: "DELETE" }),
 };
 
 export const semConexao = (e) => e instanceof ErroApi && e.status === 0;
