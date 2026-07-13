@@ -59,6 +59,8 @@ export default function Login({ onEntrou }) {
     return (
       <div className="authshell">
         <style>{css}</style>
+        <div className="authaurora" aria-hidden="true" />
+        <div className="authgrao" aria-hidden="true" />
         <main className="authbox">
           <div className="authcard authcard-espera">
             <PhoenixMascot mood="soft" />
@@ -81,10 +83,12 @@ export default function Login({ onEntrou }) {
   return (
     <div className="authshell">
       <style>{css}</style>
+      <div className="authaurora" aria-hidden="true" />
+      <div className="authgrao" aria-hidden="true" />
 
       <main className="authbox">
         <header className="authmarca">
-          <PhoenixMascot mood="cheer" />
+          <div className="authfenix"><PhoenixMascot mood="cheer" /></div>
           <div className="authmarcatxt">
             <span className="authbrand">Linha</span>
             <span className="authtag">copiloto de rotina</span>
@@ -204,16 +208,26 @@ const css = `
 /* Sem isto os campos ficam content-box e o padding estoura a largura pra fora
    do card (o reset global do app não alcança esta tela). */
 .authshell *{box-sizing:border-box;}
-.authshell{min-height:100dvh;background:radial-gradient(130% 120% at 50% 0%,#1B3C77 0%,#0C1A33 62%);display:flex;align-items:center;justify-content:center;padding:calc(24px + env(safe-area-inset-top)) 18px calc(24px + env(safe-area-inset-bottom));}
-.authbox{width:100%;max-width:420px;}
+.authshell{position:relative;overflow:hidden;min-height:100dvh;background:radial-gradient(130% 120% at 50% 0%,#1B3C77 0%,#0C1A33 62%);display:flex;align-items:center;justify-content:center;padding:calc(24px + env(safe-area-inset-top)) 18px calc(24px + env(safe-area-inset-bottom));}
+/* aurora que respira atrás do card + grão, pra tela de entrada não ser um degradê chapado */
+.authaurora{position:absolute;inset:-20% -10% auto -10%;height:80%;z-index:0;pointer-events:none;
+  background:radial-gradient(42% 40% at 26% 12%,rgba(63,208,230,.30),transparent 70%),radial-gradient(44% 42% at 80% 6%,rgba(90,148,242,.34),transparent 72%);
+  filter:blur(6px);animation:authflutua 14s ease-in-out infinite;}
+@keyframes authflutua{0%,100%{transform:translateY(0) scale(1);opacity:.9;}50%{transform:translateY(18px) scale(1.06);opacity:1;}}
+.authgrao{position:absolute;inset:0;z-index:0;pointer-events:none;opacity:.4;mix-blend-mode:soft-light;
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");}
+.authbox{position:relative;z-index:1;width:100%;max-width:420px;animation:authsobe .5s cubic-bezier(.2,.8,.2,1);}
+@keyframes authsobe{from{opacity:0;transform:translateY(16px);}to{opacity:1;transform:translateY(0);}}
 
 .authmarca{display:flex;align-items:center;gap:12px;justify-content:center;margin-bottom:22px;}
-.authmarca svg.phoenixsvg{width:56px;height:56px;filter:drop-shadow(0 6px 18px rgba(15,181,199,.45));}
+.authfenix{display:inline-flex;animation:fenixflutua 3.6s ease-in-out infinite;}
+@keyframes fenixflutua{0%,100%{transform:translateY(0);}50%{transform:translateY(-6px);}}
+.authmarca svg.phoenixsvg{width:56px;height:56px;filter:drop-shadow(0 8px 20px rgba(15,181,199,.55));}
 .authmarcatxt{display:flex;flex-direction:column;line-height:1;}
 .authbrand{font-family:'Bricolage Grotesque',sans-serif;font-weight:800;font-size:28px;letter-spacing:-.02em;background:linear-gradient(100deg,#7FE3EE,#5A94F2);-webkit-background-clip:text;background-clip:text;color:transparent;}
 .authtag{font-size:10px;letter-spacing:.16em;text-transform:uppercase;color:#7E93B8;margin-top:5px;}
 
-.authcard{background:#fff;border-radius:18px;padding:22px 20px;box-shadow:0 18px 44px rgba(6,14,30,.42);}
+.authcard{position:relative;background:#fff;border-radius:22px;padding:24px 20px;box-shadow:0 1px 0 rgba(255,255,255,.9) inset,0 24px 60px -20px rgba(6,14,30,.6),0 8px 20px -12px rgba(31,74,150,.4);}
 .authcard-espera{text-align:center;display:flex;flex-direction:column;align-items:center;}
 .authcard-espera svg.phoenixsvg{width:84px;height:84px;margin-bottom:6px;}
 
@@ -237,14 +251,17 @@ const css = `
 
 .autherro{margin:16px 0 0;background:#FDECEC;border:1px solid #E9B4B1;border-radius:11px;padding:11px 13px;font-size:13.5px;line-height:1.5;color:#96322C;font-weight:500;}
 
-.authbtn{width:100%;min-height:50px;margin-top:20px;background:linear-gradient(120deg,#0FB5C7,#1F5FE6);color:#fff;border:none;border-radius:12px;font-family:Inter,sans-serif;font-weight:700;font-size:15px;cursor:pointer;transition:transform .12s,filter .15s;}
-.authbtn:hover:not(:disabled){filter:brightness(1.05);}
+.authbtn{position:relative;overflow:hidden;width:100%;min-height:52px;margin-top:22px;background:linear-gradient(120deg,#0FB5C7,#1F5FE6);color:#fff;border:none;border-radius:14px;font-family:Inter,sans-serif;font-weight:700;font-size:15px;cursor:pointer;box-shadow:0 10px 24px -10px rgba(31,95,230,.7);transition:transform .12s,filter .15s,box-shadow .2s;}
+.authbtn::after{content:"";position:absolute;top:0;left:-70%;width:45%;height:100%;background:linear-gradient(100deg,transparent,rgba(255,255,255,.35),transparent);transform:skewX(-18deg);animation:authshine 3.4s ease-in-out 1s infinite;}
+@keyframes authshine{0%{left:-70%;}45%,100%{left:140%;}}
+.authbtn:hover:not(:disabled){filter:brightness(1.06);box-shadow:0 14px 30px -10px rgba(31,95,230,.8);}
 .authbtn:active:not(:disabled){transform:scale(.98);}
 .authbtn:disabled{opacity:.6;cursor:default;}
-.authbtn.ghost{background:transparent;border:1px solid #D6E0F0;color:#1F5FE6;}
+.authbtn.ghost{background:transparent;border:1px solid #D6E0F0;color:#1F5FE6;box-shadow:none;}
+.authbtn.ghost::after{display:none;}
 
 .authaviso{font-size:12.5px;line-height:1.55;color:#5A6B87;text-align:center;margin:16px 2px 0;}
 
 button:focus-visible,input:focus-visible{outline:2px solid #1F5FE6;outline-offset:2px;}
-@media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important;}}
+@media (prefers-reduced-motion:reduce){*,*::before,*::after{animation:none!important;transition:none!important;scroll-behavior:auto!important;}}
 `;

@@ -1139,6 +1139,8 @@ export default function Linha({ usuario, onSair, onAdmin }) {
   return (
     <div style={shell} onTouchStart={onTouchStart} onTouchEnd={onTouchEnd}>
       <style>{css}</style>
+      <div className="aurora" aria-hidden="true" />
+      <div className="grao" aria-hidden="true" />
       {splash && (
         <div className="splash">
           <div className="splashinner">
@@ -1239,14 +1241,14 @@ export default function Linha({ usuario, onSair, onAdmin }) {
           <p className="herodate">{prettyDate()}</p>
           <p className="herosub">{heroSub}</p>
           <div className="rings">
-            <Ring pct={(vitDone / 3) * 100} color="#5A94F2" label="vitórias" value={`${vitDone}/3`} onClick={() => scrollToSec("sec-vit")} />
-            <Ring pct={((s.water || 0) / 8) * 100} color="#3FD0E6" label="água" value={`${s.water || 0}/8`} onClick={() => scrollToSec("sec-agua")} />
-            <Ring pct={kcalPct} color="#F0A63C" label="energia" value={`${kcalPct}%`} onClick={() => scrollToSec("sec-fuel")} />
+            <Ring pct={(vitDone / 3) * 100} from="#7FB0FF" to="#1F5FE6" label="vitórias" value={`${vitDone}/3`} onClick={() => scrollToSec("sec-vit")} />
+            <Ring pct={((s.water || 0) / 8) * 100} from="#7FE3EE" to="#0FB5C7" label="água" value={`${s.water || 0}/8`} onClick={() => scrollToSec("sec-agua")} />
+            <Ring pct={kcalPct} from="#FFD08A" to="#E88A2C" label="energia" value={`${kcalPct}%`} onClick={() => scrollToSec("sec-fuel")} />
           </div>
           {(s.streak > 0 || (s.shields || 0) > 0) && (
             <div className="herochips">
-              {s.streak > 0 && <span className="streak">⚡ {s.streak} {s.streak === 1 ? "dia" : "dias"}</span>}
-              {(s.shields || 0) > 0 && <span className="shield">escudo {s.shields}</span>}
+              {s.streak > 0 && <span className="streak"><span className="chama" aria-hidden="true">🔥</span>{s.streak} {s.streak === 1 ? "dia seguido" : "dias seguidos"}</span>}
+              {(s.shields || 0) > 0 && <span className="shield"><span aria-hidden="true">🛡</span> {s.shields}</span>}
             </div>
           )}
         </section>
@@ -1556,7 +1558,7 @@ export default function Linha({ usuario, onSair, onAdmin }) {
 
       {editing && <Editor state={editing} onSave={saveItem} onDelete={deleteItem} onClose={() => setEditing(null)} />}
       <nav className="bnav">
-        <div className="bnavin">
+        <div className="bnavin" style={{ "--i": { hoje: 0, dicas: 1, stories: 2 }[tab] ?? 0 }}>
           <button className={"bitem" + (tab === "hoje" ? " bitem-on" : "")} onClick={() => goTab("hoje")}>
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="9" /><path d="M8.5 12.3l2.3 2.3 4.7-5.1" /></svg>
             Hoje
@@ -1594,26 +1596,55 @@ function Spark({ log }) {
 }
 
 function Burst() {
-  const colors = ["#1F5FE6", "#0FB5C7", "#F0A63C", "#7FE3EE"];
-  const pieces = [...Array(26)].map((_, i) => {
-    const a = Math.round((i / 26) * 360);
-    const d = 80 + Math.round(Math.random() * 100);
-    return <span key={i} className="confpiece" style={{ "--a": a + "deg", "--d": d + "px", background: colors[i % 4], animationDelay: (Math.random() * 0.12).toFixed(2) + "s" }} />;
+  const colors = ["#1F5FE6", "#0FB5C7", "#F0A63C", "#7FE3EE", "#5A94F2"];
+  const pieces = [...Array(38)].map((_, i) => {
+    const a = Math.round((i / 38) * 360) + Math.round(Math.random() * 8);
+    const d = 90 + Math.round(Math.random() * 130);
+    const tam = 6 + Math.round(Math.random() * 6);
+    const redondo = i % 3 === 0;
+    return (
+      <span
+        key={i}
+        className="confpiece"
+        style={{
+          "--a": a + "deg",
+          "--d": d + "px",
+          width: tam + "px",
+          height: (redondo ? tam : tam + 5) + "px",
+          borderRadius: redondo ? "50%" : "2px",
+          background: colors[i % colors.length],
+          animationDelay: (Math.random() * 0.14).toFixed(2) + "s",
+        }}
+      />
+    );
   });
   return <div className="burstwrap" aria-hidden="true">{pieces}</div>;
 }
 
-function Ring({ pct, color, label, value, onClick }) {
+function Ring({ pct, from, to, label, value, onClick }) {
   const r = 30, c = 2 * Math.PI * r;
-  const off = c * (1 - Math.min(100, Math.max(0, pct)) / 100);
+  const clamped = Math.min(100, Math.max(0, pct));
+  const off = c * (1 - clamped / 100);
+  const cheio = clamped >= 100;
+  const gid = "rg-" + label; // gradiente próprio por anel
   return (
-    <button className="ringbox" onClick={onClick} type="button">
-      <svg viewBox="0 0 74 74" width="76" height="76" role="img" aria-label={`${label}: ${value}`}>
-        <circle cx="37" cy="37" r={r} stroke="rgba(255,255,255,.15)" strokeWidth="7" fill="none" />
-        <circle cx="37" cy="37" r={r} stroke={color} strokeWidth="7" fill="none" strokeLinecap="round"
-          strokeDasharray={c} strokeDashoffset={off} transform="rotate(-90 37 37)"
-          style={{ transition: "stroke-dashoffset .8s cubic-bezier(.2,.7,.3,1)" }} />
-        <text x="37" y="39" textAnchor="middle" dominantBaseline="middle" fill="#fff" fontFamily="'Bricolage Grotesque',sans-serif" fontWeight="800" fontSize="15">{value}</text>
+    <button className={"ringbox" + (cheio ? " ring-cheio" : "")} onClick={onClick} type="button">
+      <svg viewBox="0 0 80 80" width="80" height="80" role="img" aria-label={`${label}: ${value}`}>
+        <defs>
+          <linearGradient id={gid} x1="0" y1="0" x2="1" y2="1">
+            <stop offset="0" stopColor={from} />
+            <stop offset="1" stopColor={to} />
+          </linearGradient>
+        </defs>
+        {/* trilho */}
+        <circle cx="40" cy="40" r={r} stroke="rgba(255,255,255,.14)" strokeWidth="7.5" fill="none" />
+        {/* progresso com gradiente; quando cheio, ganha um glow */}
+        <circle cx="40" cy="40" r={r} stroke={`url(#${gid})`} strokeWidth="7.5" fill="none" strokeLinecap="round"
+          strokeDasharray={c} strokeDashoffset={off} transform="rotate(-90 40 40)"
+          style={{ transition: "stroke-dashoffset .9s cubic-bezier(.2,.7,.3,1)", filter: cheio ? `drop-shadow(0 0 5px ${to})` : "none" }} />
+        {cheio
+          ? <path d="M32 40.5l5.2 5.2L49 34" fill="none" stroke="#fff" strokeWidth="3.4" strokeLinecap="round" strokeLinejoin="round" />
+          : <text x="40" y="42" textAnchor="middle" dominantBaseline="middle" fill="#fff" fontFamily="'Bricolage Grotesque',sans-serif" fontWeight="800" fontSize="15" style={{ fontVariantNumeric: "tabular-nums" }}>{value}</text>}
       </svg>
       <span className="ringlabel">{label}</span>
     </button>
@@ -1656,11 +1687,29 @@ function Editor({ state, onSave, onDelete, onClose }) {
   );
 }
 
-const shell = { minHeight: "100vh", background: "linear-gradient(180deg,#EFF4FD 0%,#E9EFFB 42%,#E5ECF8 100%)", width: "100%" };
+// 100dvh (não vh): no iPhone o vh não encolhe com a barra do Safari e criava um
+// salto. position:relative pra ancorar a aurora e o grão que ficam atrás de tudo.
+const shell = { minHeight: "100dvh", background: "#E9EFFB", width: "100%", position: "relative", overflowX: "hidden" };
 
 const css = `
 @import url('https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,700;12..96,800&family=Sacramento&family=Inter:wght@400;500;600&family=Space+Mono:wght@400;700&display=swap');
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
+/* Números com largura fixa: não "dançam" ao mudar de 9 pra 10, e alinham em colunas. */
+.tally,.weekbig,.evonum,.wksv,.levelxp,.barnum,.streak,.shield,.kcalchip,.focusclock,.nortejorney,.wbig,.lvlring text,.ringbox text{font-variant-numeric:tabular-nums;}
+
+/* ── Camada ambiente: aurora suave + grão ──────────────────────────────────────
+   Tira a cara de "flat vetorial de gerador". A aurora respira devagar; o grão é
+   um SVG de ruído embutido, fixo, sem custo de rede. Ambos atrás de tudo. */
+.aurora{position:fixed;inset:-10% -20% auto -20%;height:70vh;z-index:0;pointer-events:none;
+  background:
+    radial-gradient(48% 40% at 18% 8%, rgba(63,208,230,.20), transparent 70%),
+    radial-gradient(46% 44% at 88% 4%, rgba(31,95,230,.22), transparent 72%),
+    radial-gradient(60% 50% at 50% 0%, rgba(122,140,240,.14), transparent 75%);
+  filter:blur(8px);animation:auroraflutua 16s ease-in-out infinite;}
+@keyframes auroraflutua{0%,100%{transform:translate3d(0,0,0) scale(1);opacity:.9;}50%{transform:translate3d(0,14px,0) scale(1.05);opacity:1;}}
+.grao{position:fixed;inset:0;z-index:0;pointer-events:none;opacity:.5;mix-blend-mode:soft-light;
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");}
+.wrap{position:relative;z-index:1;}
 /* env(safe-area-inset-*): o app é standalone com a barra de status translúcida.
    Sem isso, o cabeçalho desenhava ATRÁS do notch / Dynamic Island do iPhone. */
 .wrap{max-width:520px;margin:0 auto;padding:calc(26px + env(safe-area-inset-top)) 18px calc(128px + env(safe-area-inset-bottom));color:${C.ink};font-family:Inter,system-ui,sans-serif;}
@@ -1695,7 +1744,10 @@ const css = `
 .brandsub{font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:${C.muted};margin-top:3px;}
 .lvlring{flex:none;filter:drop-shadow(0 2px 6px rgba(31,95,230,.18));}
 .headmeta{display:flex;align-items:center;gap:9px;flex-wrap:wrap;margin-top:7px;}
-.streak{font-family:'Space Mono',monospace;font-size:12px;font-weight:700;color:${C.cyan};background:${C.cyanSoft};padding:4px 10px;border-radius:99px;box-shadow:0 0 0 1px ${C.cyan}44,0 2px 10px ${C.cyan}22;}
+/* Chip de sequência: chama quente que tremula, sobre o hero escuro. */
+.streak{display:inline-flex;align-items:center;gap:5px;font-family:'Space Mono',monospace;font-size:12px;font-weight:700;color:#FFE7C2;background:linear-gradient(120deg,rgba(232,138,44,.28),rgba(240,166,60,.16));padding:5px 12px 5px 10px;border-radius:99px;box-shadow:0 0 0 1px rgba(240,166,60,.4),0 4px 14px -4px rgba(232,138,44,.6);}
+.chama{display:inline-block;font-size:13px;transform-origin:50% 90%;animation:tremula 1.5s ease-in-out infinite;filter:drop-shadow(0 0 4px rgba(255,150,40,.7));}
+@keyframes tremula{0%,100%{transform:scale(1) rotate(-2deg);}25%{transform:scale(1.14) rotate(2deg);}50%{transform:scale(.96) rotate(-1deg);}75%{transform:scale(1.08) rotate(1deg);}}
 .hello{font-family:'Bricolage Grotesque',sans-serif;font-weight:700;font-size:30px;line-height:1.08;letter-spacing:-.025em;margin:0;}
 .date{margin:0;color:${C.muted};font-size:14px;text-transform:capitalize;}
 
@@ -1775,13 +1827,15 @@ const css = `
 .breatheclose{margin-top:6px;background:#fff;color:${C.blue};border:none;border-radius:11px;padding:12px 30px;font-weight:700;font-size:15px;cursor:pointer;font-family:Inter,sans-serif;}
 @keyframes breathe{0%{transform:scale(.55);}25%{transform:scale(1);}50%{transform:scale(1);}75%{transform:scale(.55);}100%{transform:scale(.55);}}
 
-.shield{font-family:'Space Mono',monospace;font-size:12px;font-weight:700;color:${C.blue};background:${C.blueSoft};padding:4px 10px;border-radius:99px;}
-.level{background:linear-gradient(135deg,${C.navy},#173d73);border-color:${C.navy};}
+.shield{display:inline-flex;align-items:center;gap:5px;font-family:'Space Mono',monospace;font-size:12px;font-weight:700;color:#CFE0FF;background:rgba(127,179,255,.16);padding:5px 12px;border-radius:99px;box-shadow:0 0 0 1px rgba(127,179,255,.3) inset;}
+.level{position:relative;overflow:hidden;background:radial-gradient(120% 140% at 85% 0%,#22508F,${C.navy} 60%);border-color:${C.navy};box-shadow:0 14px 34px -14px rgba(12,26,51,.6);}
 .levelrow{display:flex;align-items:baseline;justify-content:space-between;margin-bottom:10px;}
-.levelnum{font-family:'Bricolage Grotesque',sans-serif;font-size:22px;font-weight:800;color:#fff;}
+.levelnum{font-family:'Bricolage Grotesque',sans-serif;font-size:23px;font-weight:800;color:#fff;}
 .leveltitle{font-size:13px;color:${C.cyan};font-weight:600;text-transform:uppercase;letter-spacing:.06em;}
-.leveltrack{height:10px;background:rgba(255,255,255,.14);border-radius:99px;overflow:hidden;}
-.levelfill{height:100%;background:linear-gradient(90deg,${C.cyan},${C.blue});border-radius:99px;transition:width .4s;}
+.leveltrack{position:relative;height:11px;background:rgba(255,255,255,.13);border-radius:99px;overflow:hidden;}
+/* brilho que corre na ponta preenchida da barra */
+.levelfill{position:relative;height:100%;background:linear-gradient(90deg,${C.cyan},${C.blue});border-radius:99px;transition:width .6s cubic-bezier(.3,1.1,.4,1);box-shadow:0 0 12px ${C.cyan}99;}
+.levelfill::after{content:"";position:absolute;right:0;top:50%;transform:translate(50%,-50%);width:14px;height:14px;border-radius:50%;background:#EAFBFE;box-shadow:0 0 10px 2px ${C.cyan};}
 .levelfoot{display:flex;justify-content:space-between;margin-top:8px;}
 .levelxp{font-family:'Space Mono',monospace;font-size:11.5px;color:#9FB4D6;}
 .chaltext{font-size:16px;line-height:1.5;color:${C.ink};font-weight:600;margin:6px 0 14px;}
@@ -1905,22 +1959,36 @@ button.sosstep:hover{border-color:${C.blue};}
 .guidebody{animation:fadedown .24s ease;}
 @keyframes fadedown{from{opacity:0;transform:translateY(-6px);}to{opacity:1;transform:translateY(0);}}
 
-.hero{background:radial-gradient(130% 150% at 18% 0%,#1B3C77 0%,${C.navy} 58%);border-radius:22px;padding:22px 20px 20px;margin-bottom:20px;color:#fff;box-shadow:0 12px 34px rgba(12,26,51,.26);}
+/* Hero com profundidade: base navy + um brilho de aurora que respira por trás
+   dos anéis. overflow:hidden pra o glow não escapar do card. */
+.hero{position:relative;overflow:hidden;background:radial-gradient(130% 150% at 18% 0%,#1B3C77 0%,${C.navy} 58%);border-radius:24px;padding:22px 20px 20px;margin-bottom:20px;color:#fff;box-shadow:0 18px 40px -12px rgba(12,26,51,.5),0 1px 0 rgba(255,255,255,.06) inset;}
+.hero::before{content:"";position:absolute;inset:-40% -10% auto -10%;height:150%;pointer-events:none;
+  background:radial-gradient(45% 42% at 30% 18%,rgba(63,208,230,.28),transparent 70%),radial-gradient(42% 40% at 82% 8%,rgba(90,148,242,.30),transparent 72%);
+  animation:auroraflutua 12s ease-in-out infinite;}
+.hero>*{position:relative;}
 .herohello{color:#fff;}
 .herodate{color:#8FA5C8;font-size:13px;margin:5px 0 3px;text-transform:capitalize;}
 .herosub{color:#7FE3EE;font-size:14px;font-weight:600;margin:0 0 18px;}
 .rings{display:flex;justify-content:space-between;gap:6px;}
-.ringbox{flex:1;display:flex;flex-direction:column;align-items:center;gap:6px;}
+.ringbox{flex:1;display:flex;flex-direction:column;align-items:center;gap:7px;}
+.ringbox svg circle,.ringbox svg path{transition:all .3s;}
+.ring-cheio svg{animation:ringpop .5s cubic-bezier(.2,.9,.3,1.5);}
+@keyframes ringpop{0%{transform:scale(1);}40%{transform:scale(1.12);}100%{transform:scale(1);}}
 .ringlabel{font-size:11px;color:#A9BBD8;letter-spacing:.05em;text-transform:uppercase;font-weight:600;}
+.ring-cheio .ringlabel{color:#7FE3EE;}
 .herochips{display:flex;gap:8px;margin-top:16px;flex-wrap:wrap;}
 
-.bnav{position:fixed;left:0;right:0;bottom:0;z-index:45;display:flex;justify-content:center;background:rgba(252,253,255,.92);-webkit-backdrop-filter:blur(16px);backdrop-filter:blur(16px);border-top:1px solid ${C.faint};padding:7px 6px calc(9px + env(safe-area-inset-bottom));}
-.bnavin{display:flex;width:100%;max-width:520px;}
-.bitem{flex:1;display:flex;flex-direction:column;align-items:center;gap:3px;background:transparent;border:none;color:${C.muted};font-family:Inter,sans-serif;font-size:11px;font-weight:600;cursor:pointer;padding:5px 0 3px;transition:color .15s,transform .15s;}
-.bitem svg{width:23px;height:23px;}
-.bitem:active{transform:scale(.94);}
+/* Glassmorphism de verdade: blur + saturação + um fio de luz na borda de cima
+   (a "refração" da beirada de vidro), em vez de só um blur chapado. */
+.bnav{position:fixed;left:0;right:0;bottom:0;z-index:45;display:flex;justify-content:center;background:rgba(249,251,255,.72);-webkit-backdrop-filter:blur(20px) saturate(1.6);backdrop-filter:blur(20px) saturate(1.6);border-top:1px solid rgba(255,255,255,.7);box-shadow:0 -8px 24px -12px rgba(31,74,150,.25);padding:7px 6px calc(9px + env(safe-area-inset-bottom));}
+.bnavin{position:relative;display:flex;width:100%;max-width:520px;}
+/* pílula que desliza pra aba ativa (posicionada por --i via style inline) */
+.bnavin::before{content:"";position:absolute;top:0;left:calc(var(--i,0) * (100% / 3));width:calc(100% / 3);height:100%;padding:3px;background:linear-gradient(180deg,${C.blueSoft},rgba(226,236,252,.4));border-radius:14px;transition:left .32s cubic-bezier(.35,1.1,.4,1);z-index:0;}
+.bitem{position:relative;z-index:1;flex:1;display:flex;flex-direction:column;align-items:center;gap:3px;background:transparent;border:none;color:${C.muted};font-family:Inter,sans-serif;font-size:11px;font-weight:600;cursor:pointer;padding:6px 0 4px;transition:color .2s,transform .15s;}
+.bitem svg{width:23px;height:23px;transition:transform .25s cubic-bezier(.2,.9,.3,1.5);}
+.bitem:active{transform:scale(.92);}
 .bitem-on{color:${C.blue};}
-.bitem-on svg{filter:drop-shadow(0 3px 7px rgba(31,95,230,.35));}
+.bitem-on svg{transform:translateY(-1px) scale(1.08);filter:drop-shadow(0 4px 8px rgba(31,95,230,.4));}
 
 button{touch-action:manipulation;}
 .wrap button:not(.pip):not(.node):active{transform:scale(.96);}
@@ -1952,12 +2020,14 @@ button{touch-action:manipulation;}
 .databtn{background:transparent;border:1px solid ${C.faint};color:${C.muted};font-size:12px;font-weight:600;padding:9px 14px;border-radius:99px;cursor:pointer;font-family:Inter,sans-serif;}
 .databtn:hover{border-color:${C.blue};color:${C.blue};}
 
-.watercard{background:linear-gradient(180deg,#F0FAFC,${C.surface});}
-.drops{display:grid;grid-template-columns:repeat(8,1fr);gap:8px;margin:6px 0 14px;}
-.drop{min-height:44px;}
-.drop{aspect-ratio:1;border-radius:50% 50% 50% 50% / 60% 60% 40% 40%;border:2px solid ${C.cyan}66;background:transparent;cursor:pointer;transition:all .18s;padding:0;}
+.watercard{background:linear-gradient(180deg,#EDFBFD,${C.surface});}
+/* CONSERTO do mobile: eram 8 gotas numa fileira e o aspect-ratio:1 brigava com o
+   min-height:44px que eu tinha posto pro toque — as gotas esticavam e "quebravam".
+   Agora 2 fileiras de 4: cada gota fica ~70px (bem acima de 44) e volta redonda. */
+.drops{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin:8px 0 14px;}
+.drop{aspect-ratio:1;border-radius:50% 50% 50% 50% / 62% 62% 38% 38%;border:2px solid ${C.cyan}66;background:transparent;cursor:pointer;transition:transform .2s cubic-bezier(.2,.9,.3,1.4),background .2s,border-color .2s,box-shadow .2s;padding:0;}
 .drop:hover{border-color:${C.cyan};}
-.drop-on{background:linear-gradient(180deg,#7FE3EE,${C.cyan});border-color:${C.cyan};animation:popcheck .25s;}
+.drop-on{background:radial-gradient(120% 100% at 40% 25%,#9DEBF3,${C.cyan});border-color:${C.cyan};box-shadow:0 6px 14px -4px rgba(15,181,199,.5);animation:popcheck .3s;}
 .waterbtns{display:flex;gap:8px;}
 .waterbtn{flex:1;background:${C.cyan};color:#04323a;border:none;border-radius:11px;padding:12px;font-weight:700;font-size:14px;cursor:pointer;font-family:Inter,sans-serif;}
 .waterbtn.ghost{flex:0 0 64px;background:transparent;border:1px solid ${C.faint};color:${C.muted};font-weight:600;}
@@ -1986,15 +2056,20 @@ button{touch-action:manipulation;}
 .readdone{background:linear-gradient(120deg,${C.blue},${C.cyan});color:#fff;font-size:14px;line-height:1.5;padding:14px;border-radius:12px;margin:6px 0 12px;animation:pop .35s cubic-bezier(.2,.9,.3,1.3);}
 .readdone strong{font-weight:700;}
 
-.card{background:${C.surface};border:1px solid ${C.faint};border-radius:18px;padding:19px;margin-bottom:20px;box-shadow:0 2px 12px rgba(12,26,51,.055),0 1px 2px rgba(12,26,51,.04);}
+/* Sombra tintada de azul (não preto), um fio de luz no topo e um brilho que
+   sobe no toque: dá o acabamento "caro" sem pesar. */
+.card{position:relative;background:${C.surface};border:1px solid ${C.faint};border-radius:20px;padding:19px;margin-bottom:20px;
+  box-shadow:0 1px 0 rgba(255,255,255,.9) inset, 0 6px 22px -8px rgba(31,74,150,.20), 0 2px 6px -2px rgba(31,74,150,.10);
+  transition:box-shadow .25s ease, transform .2s ease;}
+.wrap>section.card:active{transform:translateY(1px);}
 .q{font-size:13px;font-weight:600;color:${C.muted};margin:0 0 10px;}
 .q-gap{margin-top:18px;}
 /* Dez pips numa fileira davam ~27x34px num iPhone. Duas fileiras de cinco dão
    ~57x44px cada: o polegar acerta o número que queria. */
 .energy{display:grid;grid-template-columns:repeat(5,1fr);gap:8px;}
-.pip{font-family:'Space Mono',monospace;font-size:14px;border:1px solid ${C.faint};background:transparent;color:${C.muted};border-radius:8px;height:44px;cursor:pointer;transition:all .15s;}
+.pip{font-family:'Space Mono',monospace;font-size:14px;border:1px solid ${C.faint};background:${C.surface};color:${C.muted};border-radius:10px;height:44px;cursor:pointer;transition:transform .2s cubic-bezier(.2,.9,.3,1.5),background .2s,color .2s,border-color .2s,box-shadow .2s;}
 .pip:hover{border-color:${C.blue};}
-.pip-on{background:${C.blue};color:#fff;border-color:${C.blue};}
+.pip-on{background:linear-gradient(135deg,${C.blue},#3E7BF0);color:#fff;border-color:transparent;box-shadow:0 5px 12px -4px ${C.blue}88;transform:translateY(-1px);}
 .seg{display:flex;gap:6px;}
 .segbtn{flex:1;padding:11px 0;border:1px solid ${C.faint};background:transparent;border-radius:10px;font-size:14px;font-weight:500;color:${C.muted};cursor:pointer;transition:all .15s;font-family:Inter,sans-serif;}
 .segbtn:hover{border-color:${C.blue};}
@@ -2025,24 +2100,31 @@ button{touch-action:manipulation;}
 .sectnote{font-size:13px;color:${C.muted};line-height:1.5;margin:8px 0 14px;}
 .addbtn{background:${C.blueSoft};border:1px solid ${C.blue}55;color:${C.blue};font-size:13px;font-weight:600;min-height:40px;padding:0 14px;border-radius:99px;cursor:pointer;font-family:Inter,sans-serif;align-self:center;}
 
-.celebra{background:linear-gradient(100deg,${C.blue},${C.cyan});color:#fff;font-weight:600;font-size:14px;padding:12px 14px;border-radius:12px;margin:10px 0 14px;animation:pop .35s cubic-bezier(.2,.9,.3,1.3);}
+.celebra{position:relative;overflow:hidden;background:linear-gradient(100deg,${C.blue},${C.cyan});color:#fff;font-weight:700;font-size:14px;padding:13px 15px;border-radius:13px;margin:10px 0 14px;box-shadow:0 10px 24px -10px ${C.blue}99;animation:pop .35s cubic-bezier(.2,.9,.3,1.3);}
+/* brilho diagonal que varre a faixa, uma vez a cada ciclo */
+.celebra::after{content:"";position:absolute;top:0;left:-60%;width:50%;height:100%;background:linear-gradient(100deg,transparent,rgba(255,255,255,.45),transparent);transform:skewX(-18deg);animation:varre 2.6s ease-in-out .3s infinite;}
+@keyframes varre{0%{left:-60%;}55%,100%{left:130%;}}
 .lowbanner{background:${C.goldSoft};border:1px solid ${C.gold}55;color:#7A5A12;font-size:13px;line-height:1.5;padding:11px 14px;border-radius:12px;margin:10px 0 14px;}
 .lowbanner strong{color:${C.gold};}
 
 .vits{display:flex;flex-direction:column;gap:9px;}
-.vit{display:flex;gap:12px;align-items:center;background:${C.surface};border:1px solid ${C.faint};border-radius:13px;padding:13px 14px;transition:all .15s;}
-.vit-done{background:${C.blueSoft};border-color:${C.blue};}
+.vit{position:relative;overflow:hidden;display:flex;gap:12px;align-items:center;background:${C.surface};border:1px solid ${C.faint};border-radius:14px;padding:13px 14px;transition:background .3s,border-color .3s,box-shadow .3s;}
+.vit-done{background:linear-gradient(100deg,${C.blueSoft},#EAF6FF);border-color:${C.blue}77;box-shadow:0 6px 16px -8px ${C.blue}55;}
 .vitbody{flex:1;min-width:0;display:flex;flex-direction:column;gap:2px;}
 .vitlabel{font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:${C.muted};font-weight:600;}
 .vit-done .vitlabel{color:${C.blue};}
 .vitinput{border:none;background:transparent;font-family:Inter,sans-serif;font-size:16px;font-weight:500;color:${C.ink};width:100%;padding:0;outline:none;}
 .vitinput::placeholder{color:#9DAEC9;font-weight:400;}
-/* O quadradinho continua com 26px (o visual é esse), mas a área que RESPONDE ao
-   dedo cresce pra 44px com um ::after invisível. É o botão mais tocado do app. */
-.check{position:relative;flex:none;width:26px;height:26px;border-radius:8px;border:1.5px solid ${C.faint};background:transparent;cursor:pointer;color:#fff;font-size:14px;font-weight:700;transition:all .15s;display:flex;align-items:center;justify-content:center;}
+/* O botão mais tocado do app. Continua com o visual pequeno (28px), mas: a área
+   de toque real é 44px (::after invisível), e ao marcar dá um pop de mola + um
+   anel que irradia (::before). Marcar uma vitória tem que dar gostinho. */
+.check{position:relative;flex:none;width:28px;height:28px;border-radius:9px;border:1.5px solid ${C.faint};background:transparent;cursor:pointer;color:#fff;font-size:15px;font-weight:700;transition:transform .2s cubic-bezier(.2,.9,.3,1.5),background .2s,border-color .2s,box-shadow .2s;display:flex;align-items:center;justify-content:center;}
 .check::after{content:"";position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:44px;height:44px;}
+.check::before{content:"";position:absolute;inset:-4px;border-radius:12px;border:2px solid ${C.cyan};opacity:0;pointer-events:none;}
 .check:hover{border-color:${C.blue};}
-.check-on{background:${C.blue};border-color:${C.blue};}
+.check-on{background:linear-gradient(135deg,${C.blue},${C.cyan});border-color:transparent;box-shadow:0 6px 16px -5px ${C.blue}cc;}
+.check-on::before{animation:irradia .55s ease-out;}
+@keyframes irradia{0%{opacity:.65;transform:scale(.9);}100%{opacity:0;transform:scale(2);}}
 
 .weekcard{background:linear-gradient(180deg,#F1F6FF,${C.surface});}
 .weekhero{display:flex;align-items:center;gap:16px;margin:14px 0 16px;}
@@ -2150,7 +2232,7 @@ button{touch-action:manipulation;}
 @keyframes rise{from{transform:translateY(30px);}to{transform:translateY(0);}}
 @keyframes pop{from{transform:scale(.9);opacity:0;}to{transform:scale(1);opacity:1;}}
 button:focus-visible,input:focus-visible,textarea:focus-visible{outline:2px solid ${C.blue};outline-offset:2px;}
-@media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important;}}
+@media (prefers-reduced-motion:reduce){*,*::before,*::after{animation:none!important;transition:none!important;scroll-behavior:auto!important;}}
 /* Numa tela de 360px o texto encolhe, mas o alvo de toque NÃO: 44px continua 44px. */
 @media (max-width:380px){.hello{font-size:26px;}.focusclock{font-size:44px;}.weekbig{font-size:44px;}.pip{font-size:13px;}}
 `;

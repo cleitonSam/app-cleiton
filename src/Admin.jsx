@@ -439,7 +439,9 @@ const css = `
 .admh1{font-family:'Bricolage Grotesque',sans-serif;font-size:26px;font-weight:800;letter-spacing:-.025em;margin:5px 0 0;}
 .admvoltar{flex:none;min-height:44px;padding:0 14px;background:#fff;border:1px solid #D6E0F0;border-radius:11px;color:#1F5FE6;font-family:Inter,sans-serif;font-size:13.5px;font-weight:600;cursor:pointer;}
 
-.admalerta{background:linear-gradient(120deg,#1F5FE6,#0FB5C7);color:#fff;border-radius:14px;padding:13px 15px;font-size:14px;line-height:1.5;margin-bottom:18px;}
+.admalerta{position:relative;overflow:hidden;background:linear-gradient(120deg,#1F5FE6,#0FB5C7);color:#fff;border-radius:14px;padding:13px 15px;font-size:14px;line-height:1.5;margin-bottom:18px;box-shadow:0 10px 24px -12px rgba(31,95,230,.8);}
+.admalerta::after{content:"";position:absolute;top:0;left:-60%;width:45%;height:100%;background:linear-gradient(100deg,transparent,rgba(255,255,255,.4),transparent);transform:skewX(-18deg);animation:admvarre 3s ease-in-out .4s infinite;}
+@keyframes admvarre{0%{left:-60%;}55%,100%{left:140%;}}
 
 .admtabs{display:flex;gap:6px;background:#E2ECFC;padding:4px;border-radius:12px;margin-bottom:18px;}
 .admtab{flex:1;min-height:44px;border:none;background:transparent;border-radius:9px;font-family:Inter,sans-serif;font-size:14px;font-weight:600;color:#5A6B87;cursor:pointer;}
@@ -469,9 +471,12 @@ const css = `
 .admrail{position:relative;width:26px;flex:none;display:flex;justify-content:center;}
 .admfio{position:absolute;top:0;bottom:0;width:2px;background:#D6E0F0;}
 .admfio-fim{bottom:50%;}
-.admno{position:relative;margin-top:20px;width:26px;height:26px;border-radius:50%;border:2px solid #D6E0F0;background:#E9EFFB;z-index:2;color:#fff;font-size:13px;font-weight:700;display:flex;align-items:center;justify-content:center;flex:none;}
-.admno-pendente{border-color:#C98A24;background:#F4EAD4;}
-.admno-ativo{background:#1F5FE6;border-color:#1F5FE6;}
+.admno{position:relative;margin-top:20px;width:28px;height:28px;border-radius:50%;border:2px solid #D6E0F0;background:#E9EFFB;z-index:2;color:#fff;font-size:14px;font-weight:700;display:flex;align-items:center;justify-content:center;flex:none;transition:background .3s,border-color .3s,box-shadow .3s;}
+/* o nó pendente pulsa devagar — é ele que pede pra você liberar */
+.admno-pendente{border-color:#C98A24;background:#F9EFD8;animation:noPulsa 2s ease-in-out infinite;}
+@keyframes noPulsa{0%,100%{box-shadow:0 0 0 0 rgba(201,138,36,.4);}50%{box-shadow:0 0 0 6px rgba(201,138,36,0);}}
+/* o nó aceso brilha, como um nó da linha do dia marcado */
+.admno-ativo{background:linear-gradient(135deg,#1F5FE6,#0FB5C7);border-color:transparent;box-shadow:0 5px 14px -4px rgba(31,95,230,.7);}
 .admno-bloqueado{border-color:#C0453F;background:#FDECEC;}
 
 .admcorpo{flex:1;min-width:0;padding:14px 0 18px;}
@@ -527,5 +532,5 @@ const css = `
 .authbtn:disabled{opacity:.6;cursor:default;}
 
 button:focus-visible,input:focus-visible{outline:2px solid #1F5FE6;outline-offset:2px;}
-@media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important;}}
+@media (prefers-reduced-motion:reduce){*,*::before,*::after{animation:none!important;transition:none!important;scroll-behavior:auto!important;}}
 `;
