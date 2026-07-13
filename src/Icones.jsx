@@ -160,3 +160,64 @@ export function BadgeGrupo({ grupo, size = 34 }) {
 }
 
 export const corGrupo = (grupo) => (G[grupo] || PADRAO).cor;
+
+// ─── Equipamento ──────────────────────────────────────────────────────────────
+export const IcMaquinaEq = svg(
+  <>
+    <rect x="3" y="4" width="4" height="16" rx="1" />
+    <path d="M7 8h6l4 4-4 4H7" />
+    <circle cx="19" cy="12" r="2" />
+  </>
+);
+export const IcPolia = svg(
+  <>
+    <circle cx="12" cy="5" r="2" />
+    <path d="M12 7v5M8 12h8M8 12l-2 8M16 12l2 8" />
+  </>
+);
+
+/** Ícone certo pro tipo de equipamento do exercício. */
+export function IconeEquip({ equip, size = 16 }) {
+  const e = (equip || "").toLowerCase();
+  if (/barra/.test(e)) return <IcBarra size={size} />;
+  if (/halter/.test(e)) return <IcHalter size={size} />;
+  if (/cabo|polia/.test(e)) return <IcPolia size={size} />;
+  if (/m[áa]quina|smith/.test(e)) return <IcMaquinaEq size={size} />;
+  if (/corpo|peso corporal/.test(e)) return <IcCorpo size={size} />;
+  return <IcHalter size={size} />;
+}
+
+// ─── Refeições / dieta ────────────────────────────────────────────────────────
+export const IcCafe = svg(
+  <>
+    <path d="M5 8h11v5a4 4 0 0 1-4 4H9a4 4 0 0 1-4-4z" />
+    <path d="M16 9h2a2 2 0 0 1 0 4h-2" />
+    <path d="M8 3v2M11 3v2" />
+  </>
+);
+export const IcPrato = svg(
+  <>
+    <circle cx="11" cy="12" r="7" />
+    <circle cx="11" cy="12" r="3" />
+    <path d="M20 4v7M20 4c-1.5 0-2 1-2 3s.5 3 2 3" />
+  </>
+);
+export const IcLua = svg(<path d="M20 14a8 8 0 1 1-9-11 6 6 0 0 0 9 11z" />);
+export const IcAgua = svg(<path d="M12 3c3 4 6 7 6 11a6 6 0 0 1-12 0c0-4 3-7 6-11z" />);
+export const IcGrafico = svg(
+  <>
+    <path d="M4 20V4M4 20h16" />
+    <path d="M8 16l3-4 3 2 4-6" />
+  </>
+);
+export const IcChamaMini = IcChama;
+
+// ícone pra cada refeição pelo nome
+export function IconeRefeicao({ nome, size = 20 }) {
+  const n = (nome || "").toLowerCase();
+  if (/café|cafe|manh/.test(n)) return <IcCafe size={size} />;
+  if (/almo|jantar/.test(n)) return <IcPrato size={size} />;
+  if (/ceia|noite/.test(n)) return <IcLua size={size} />;
+  if (/lanche|pré|pós|pre|pos/.test(n)) return <IcMaca size={size} />;
+  return <IcPrato size={size} />;
+}

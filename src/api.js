@@ -83,6 +83,7 @@ export const api = {
   treinoGerar: (anamnese) => chamar("/treino/gerar", { metodo: "POST", corpo: { anamnese } }),
   nutriAlimentos: (q) => chamar(`/nutri/alimentos?q=${encodeURIComponent(q)}`),
   iaStatus: () => chamar("/ia/status"),
+  iaDieta: (anamnese, pedido) => chamar("/ia/dieta", { metodo: "POST", corpo: { anamnese, pedido } }),
 };
 
 export const semConexao = (e) => e instanceof ErroApi && e.status === 0;

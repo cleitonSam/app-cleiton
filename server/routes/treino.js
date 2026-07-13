@@ -1,5 +1,5 @@
-import { spawn } from "node:child_process";
 import { exigeLogin } from "../guards.js";
+import { pegarVideo } from "../video.js";
 import {
   buscarAlimentos,
   buscarExercicio,
@@ -101,44 +101,36 @@ export default async function rotasTreino(app) {
         return reply.code(403).send({ erro: "Só vídeo mp4." });
       }
 
-      // Por que wget e não fetch: o Cloudflare do MuscleWiki bloqueia o fingerprint
-      // TLS do fetch do Node (403), mas deixa passar o wget. O wget já está na
-      // imagem (uso no healthcheck). Passo a URL como argumento (array, sem shell),
-      // então não há injeção — e o host já foi validado acima.
-      reply.hijack(); // assumimos o controle do stream; o Fastify não mexe mais
-      const res = reply.raw;
-      res.setHeader("content-type", "video/mp4");
-      res.setHeader("cache-control", "public, max-age=604800");
+      // Baixa (ou pega do cache) o vídeo inteiro. Precisa dele todo na mão pra
+      // responder Range: o iPhone/Safari só toca <video> quando o servidor
+      // devolve 206 + Content-Range. Servir 200 inteiro faz o vídeo não abrir no iOS.
+      let buf;
+      try {
+        buf = await pegarVideo(alvo.href);
+      } catch {
+        return reply.code(502).send({ erro: "Não consegui carregar o vídeo." });
+      }
 
-      // Caminho absoluto (não depende do PATH) — o pacote wget do Alpine instala aqui.
-      const wget = spawn("/usr/bin/wget", [
-        "-q",
-        "-O",
-        "-",
-        "--timeout=15",
-        "--tries=1",
-        "--header=User-Agent: Mozilla/5.0 (Linux; Android 12) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Mobile Safari/537.36",
-        "--header=Referer: https://musclewiki.com/",
-        alvo.href,
-      ]);
+      reply.header("accept-ranges", "bytes");
+      reply.header("content-type", "video/mp4");
+      reply.header("cache-control", "public, max-age=604800");
 
-      let algumByte = false;
-      wget.stdout.on("data", () => (algumByte = true));
-      wget.stdout.pipe(res);
-
-      wget.on("error", () => {
-        if (!res.headersSent && !algumByte) res.statusCode = 502;
-        res.end();
-      });
-      wget.on("close", (code) => {
-        if (code !== 0 && !algumByte) {
-          res.statusCode = 502;
+      const range = req.headers.range;
+      if (range) {
+        const m = /bytes=(\d*)-(\d*)/.exec(range);
+        let inicio = m && m[1] ? Number(m[1]) : 0;
+        let fim = m && m[2] ? Number(m[2]) : buf.length - 1;
+        // faixa inválida → 416
+        if (Number.isNaN(inicio) || Number.isNaN(fim) || inicio > fim || inicio >= buf.length) {
+          reply.header("content-range", `bytes */${buf.length}`);
+          return reply.code(416).send();
         }
-        res.end();
-      });
-      // Cliente desistiu (fechou a aba, trocou de exercício): mata o wget.
-      req.raw.on("close", () => wget.kill("SIGKILL"));
-      return reply;
+        fim = Math.min(fim, buf.length - 1);
+        reply.header("content-range", `bytes ${inicio}-${fim}/${buf.length}`);
+        return reply.code(206).send(buf.subarray(inicio, fim + 1));
+      }
+
+      return reply.code(200).send(buf);
     }
   );
 }

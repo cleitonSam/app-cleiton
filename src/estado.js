@@ -117,10 +117,10 @@ export function estadoPadrao() {
     ],
     weight: { goal: 62, log: [] },
 
-    // Treino: a anamnese e o plano gerado. Sincroniza entre aparelhos (seu treino
-    // aparece no celular e no computador). Os chats de IA NÃO ficam aqui (são
+    // Treino: anamnese, plano gerado, cardápio, cargas por exercício e o que foi
+    // feito hoje. Sincroniza entre aparelhos. Os chats de IA NÃO ficam aqui (são
     // grandes e efêmeros) — vivem só na tela enquanto aberta.
-    treino: { anamnese: null, plano: null },
+    treino: { anamnese: null, plano: null, dieta: null, cargas: {}, feito: { data: "", ids: [] } },
   };
 }
 
@@ -267,9 +267,23 @@ export function normalizar(bruto) {
   // é dado da própria pessoa, e o formato do plano pode evoluir.
   if (bruto.treino && typeof bruto.treino === "object") {
     const t = bruto.treino;
+    // cargas: { exId: kg } — só números válidos
+    const cargas = {};
+    if (t.cargas && typeof t.cargas === "object") {
+      for (const [k, v] of Object.entries(t.cargas)) {
+        const kg = num(v, null, 0, 1000);
+        if (kg != null) cargas[String(k).slice(0, 40)] = kg;
+      }
+    }
+    const feito = t.feito && typeof t.feito === "object"
+      ? { data: dataOuNulo(t.feito.data) || "", ids: Array.isArray(t.feito.ids) ? t.feito.ids.slice(0, 60).map((x) => String(x).slice(0, 40)) : [] }
+      : { data: "", ids: [] };
     e.treino = {
       anamnese: t.anamnese && typeof t.anamnese === "object" ? t.anamnese : null,
       plano: t.plano && typeof t.plano === "object" ? t.plano : null,
+      dieta: t.dieta && typeof t.dieta === "object" ? t.dieta : null,
+      cargas,
+      feito,
     };
   }
 

@@ -77,6 +77,42 @@ export default async function rotasIA(app) {
 
   app.get("/ia/status", async () => ({ ativa: IA_ATIVA() }));
 
+  // ─── Gerar cardápio estruturado (JSON) ──────────────────────────────────────
+  // Diferente do chat: pede um plano em JSON pra renderizar em cards bonitos.
+  app.post(
+    "/ia/dieta",
+    {
+      config: { rateLimit: { max: 12, timeWindow: "5 minutes" } },
+      schema: { body: { type: "object", properties: { anamnese: { type: "object" }, pedido: { type: "string", maxLength: 400 } } } },
+    },
+    async (req, reply) => {
+      if (!IA_ATIVA()) return reply.code(503).send({ erro: "A IA ainda não foi ligada neste servidor." });
+
+      const n = calcularNutricao(req.body.anamnese || {});
+      const restr = req.body.anamnese?.restricoesAlimentares;
+      const pedido = req.body.pedido ? `Pedido do aluno: ${req.body.pedido}.` : "";
+
+      const system = `Você é nutricionista. Monta cardápios com comida brasileira comum e acessível.
+Responda APENAS com um JSON válido (sem markdown, sem crases), exatamente neste formato:
+{"resumo":"uma frase","totais":{"kcal":0,"prot":0,"carb":0,"gord":0},"refeicoes":[{"nome":"Café da manhã","horario":"07:00","itens":[{"alimento":"Ovos mexidos","medida":"3 unidades","kcal":230,"prot":18,"carb":2,"gord":16}],"kcal":230,"prot":18,"carb":2,"gord":16}]}
+Regras: 5 a 6 refeições. Os totais devem bater com a meta. Valores numéricos (sem "g" nem "kcal" no número). ${restr ? "Restrições: " + restr + "." : ""}`;
+
+      const meta = `Monte o cardápio do dia para o objetivo "${n.objetivo}" (${n.referencia}). Meta: ${n.kcalMeta} kcal, ${n.macros.prot}g de proteína, ${n.macros.carb}g de carbo, ${n.macros.gord}g de gordura. ${pedido}`;
+
+      try {
+        const texto = await conversar({ system, mensagens: [{ role: "user", content: meta }], maxTokens: 2200 });
+        const limpo = texto.replace(/```json?/gi, "").replace(/```/g, "").trim();
+        const inicio = limpo.indexOf("{");
+        const fim = limpo.lastIndexOf("}");
+        const dieta = JSON.parse(limpo.slice(inicio, fim + 1));
+        return { dieta, metas: { kcalMeta: n.kcalMeta, ...n.macros } };
+      } catch (e) {
+        req.log.error({ err: e.message }, "falha ao gerar dieta");
+        return reply.code(502).send({ erro: "Não consegui montar o cardápio agora. Tenta de novo." });
+      }
+    }
+  );
+
   app.post(
     "/ia/:agente",
     {
