@@ -60,12 +60,21 @@ export default function Treino({ s, setS, iaAtiva }) {
 
   const pesoSalvo = s.weight?.log?.length ? s.weight.log[s.weight.log.length - 1].kg : "";
 
-  // ── helpers de estado (carga + feito hoje) ──
+  // ── helpers de estado (carga + histórico + feito hoje) ──
   const cargas = treino.cargas || {};
+  const cargasHist = treino.cargasHist || {};
   const feitoHoje = treino.feito?.data === iso() ? treino.feito.ids : [];
 
-  const setCarga = (exId, kg) =>
-    setS((x) => ({ ...x, treino: { ...x.treino, cargas: { ...(x.treino.cargas || {}), [exId]: kg } } }));
+  // Registra a carga: guarda o valor atual E grava no histórico (uma entrada por
+  // dia). É o histórico que deixa a pessoa VER o peso subir — o gancho de resultado.
+  const registrarCarga = (exId, kg) =>
+    setS((x) => {
+      const t = x.treino || {};
+      const hist = { ...(t.cargasHist || {}) };
+      const semHoje = (hist[exId] || []).filter((e) => e.d !== iso());
+      hist[exId] = [...semHoje, { d: iso(), kg }].slice(-20);
+      return { ...x, treino: { ...t, cargas: { ...(t.cargas || {}), [exId]: kg }, cargasHist: hist } };
+    });
 
   const toggleFeito = (exId) =>
     setS((x) => {
@@ -116,8 +125,9 @@ export default function Treino({ s, setS, iaAtiva }) {
             plano={treino.plano}
             anamnese={treino.anamnese}
             cargas={cargas}
+            cargasHist={cargasHist}
             feitoHoje={feitoHoje}
-            onCarga={setCarga}
+            onCarga={registrarCarga}
             onToggleFeito={toggleFeito}
             onRefazer={() => setVista("anamnese")}
             onAbrirEx={setExAberto}
@@ -134,7 +144,8 @@ export default function Treino({ s, setS, iaAtiva }) {
         <ExercicioModal
           item={exAberto}
           carga={cargas[exAberto.id]}
-          onCarga={(kg) => setCarga(exAberto.id, kg)}
+          hist={cargasHist[exAberto.id]}
+          onCarga={(kg) => registrarCarga(exAberto.id, kg)}
           feito={feitoHoje.includes(exAberto.id)}
           onToggleFeito={() => toggleFeito(exAberto.id)}
           onFechar={() => setExAberto(null)}
@@ -332,8 +343,103 @@ function Anamnese({ inicial, pesoSalvo, onPronto, onCancelar }) {
   );
 }
 
+// ─── Input de carga com histórico (flash + recorde) ───────────────────────────
+function CargaInput({ carga, hist, onRegistrar, nome }) {
+  const [draft, setDraft] = useState(carga != null ? String(carga) : "");
+  const [flash, setFlash] = useState(null); // null | 'ok' | 'recorde'
+  useEffect(() => { setDraft(carga != null ? String(carga) : ""); }, [carga]);
+
+  // recorde = maior carga registrada ANTES de hoje
+  const recordeAnterior = (hist || []).filter((e) => e.d !== iso()).reduce((m, e) => Math.max(m, e.kg), 0);
+
+  const commit = () => {
+    const kg = Number(String(draft).replace(",", "."));
+    if (!Number.isFinite(kg) || kg <= 0) return;
+    if (kg === carga && (hist || []).some((e) => e.d === iso() && e.kg === kg)) return; // nada mudou
+    onRegistrar(kg);
+    const recorde = recordeAnterior > 0 && kg > recordeAnterior;
+    setFlash(recorde ? "recorde" : "ok");
+    buzz(recorde ? [12, 40, 12] : 8);
+    setTimeout(() => setFlash(null), 1600);
+  };
+
+  return (
+    <div className="trcarga">
+      <input
+        className={"trcargain" + (flash ? " f-" + flash : "")}
+        type="text"
+        inputMode="decimal"
+        value={draft}
+        onChange={(e) => setDraft(e.target.value)}
+        onBlur={commit}
+        onKeyDown={(e) => { if (e.key === "Enter") { commit(); e.target.blur(); } }}
+        placeholder={recordeAnterior ? String(recordeAnterior) : "kg"}
+        aria-label={"Carga de " + nome}
+      />
+      {flash === "recorde" && <span className="trrecorde">recorde! 🎉</span>}
+    </div>
+  );
+}
+
+// variante do CargaInput pro modal (grava no histórico ao sair do campo)
+function CargaModalInput({ carga, hist, onRegistrar, nome }) {
+  const [draft, setDraft] = useState(carga != null ? String(carga) : "");
+  const [flash, setFlash] = useState(false);
+  useEffect(() => { setDraft(carga != null ? String(carga) : ""); }, [carga]);
+  const recordeAnterior = (hist || []).filter((e) => e.d !== iso()).reduce((m, e) => Math.max(m, e.kg), 0);
+  const commit = () => {
+    const kg = Number(String(draft).replace(",", "."));
+    if (!Number.isFinite(kg) || kg <= 0) return;
+    onRegistrar(kg);
+    buzz(recordeAnterior > 0 && kg > recordeAnterior ? [12, 40, 12] : 8);
+    setFlash(true);
+    setTimeout(() => setFlash(false), 1400);
+  };
+  return (
+    <input
+      className={flash ? "f-ok" : ""}
+      type="text"
+      inputMode="decimal"
+      value={draft}
+      onChange={(e) => setDraft(e.target.value)}
+      onBlur={commit}
+      onKeyDown={(e) => { if (e.key === "Enter") { commit(); e.target.blur(); } }}
+      placeholder={recordeAnterior ? String(recordeAnterior) : "0"}
+      aria-label={"Carga de " + nome}
+    />
+  );
+}
+
+// mini-evolução da carga (últimos registros como barras) — pro modal
+function MiniEvolucao({ hist }) {
+  const dados = (hist || []).slice(-8);
+  if (dados.length < 2) return null;
+  const max = Math.max(...dados.map((e) => e.kg));
+  const min = Math.min(...dados.map((e) => e.kg));
+  const span = max - min || 1;
+  const primeiro = dados[0].kg;
+  const ultimo = dados[dados.length - 1].kg;
+  const delta = +(ultimo - primeiro).toFixed(1);
+  return (
+    <div className="trbloco">
+      <h4 className="trblocoh"><IcGrafico size={15} /> Sua evolução de carga</h4>
+      <div className="trevobarras">
+        {dados.map((e, i) => (
+          <div key={i} className="trevocol" title={`${e.d}: ${e.kg}kg`}>
+            <div className="trevobar" style={{ height: 20 + ((e.kg - min) / span) * 44 + "px" }} />
+          </div>
+        ))}
+      </div>
+      <p className="trevotxt">
+        {delta > 0 ? <><strong style={{ color: "var(--vd)" }}>+{delta} kg</strong> desde o começo. Tá subindo! 💪</> : delta < 0 ? `${delta} kg no período.` : "Mantendo a carga. Bora aumentar?"}
+        {" "}Recorde: <strong>{max} kg</strong>.
+      </p>
+    </div>
+  );
+}
+
 // ─── Plano ────────────────────────────────────────────────────────────────────
-function Plano({ plano, anamnese, cargas, feitoHoje, onCarga, onToggleFeito, onRefazer, onAbrirEx }) {
+function Plano({ plano, anamnese, cargas, cargasHist, feitoHoje, onCarga, onToggleFeito, onRefazer, onAbrirEx }) {
   const [aberto, setAberto] = useState(0);
   const nut = calcNutri(anamnese);
 
@@ -419,20 +525,7 @@ function Plano({ plano, anamnese, cargas, feitoHoje, onCarga, onToggleFeito, onR
                           </span>
                           <span className="trexplay"><IcPlay size={20} /></span>
                         </button>
-                        <div className="trcarga">
-                          <input
-                            className="trcargain"
-                            type="text"
-                            inputMode="decimal"
-                            value={cargas[ex.id] ?? ""}
-                            onChange={(e) => {
-                              const kg = Number(String(e.target.value).replace(",", "."));
-                              onCarga(ex.id, Number.isFinite(kg) ? kg : 0);
-                            }}
-                            placeholder="kg"
-                            aria-label={"Carga de " + ex.nome}
-                          />
-                        </div>
+                        <CargaInput carga={cargas[ex.id]} hist={cargasHist[ex.id]} onRegistrar={(kg) => onCarga(ex.id, kg)} nome={ex.nome} />
                       </div>
                     );
                   })}
@@ -509,9 +602,18 @@ function Dieta({ anamnese, dieta, onDieta, iaAtiva, temAnamnese, onFazerAnamnese
             <div className="trmacroanel"><AnelMacro macros={nut.macros} /></div>
           </div>
           <div className="trmacrobars">
-            <BarraMacro nome="Proteína" v={nut.macros.prot} max={nut.macros.prot} cor="#1F5FE6" />
-            <BarraMacro nome="Carbo" v={nut.macros.carb} max={nut.macros.carb} cor="#0FB5C7" />
-            <BarraMacro nome="Gordura" v={nut.macros.gord} max={nut.macros.gord} cor="#E8A24E" />
+            {(() => {
+              // barras proporcionais à fatia de calorias de cada macro (não mais 100% fixo)
+              const kP = nut.macros.prot * 4, kC = nut.macros.carb * 4, kG = nut.macros.gord * 9;
+              const tot = kP + kC + kG || 1;
+              return (
+                <>
+                  <BarraMacro nome="Proteína" v={nut.macros.prot} pct={Math.round((kP / tot) * 100)} cor="#1F5FE6" />
+                  <BarraMacro nome="Carbo" v={nut.macros.carb} pct={Math.round((kC / tot) * 100)} cor="#0FB5C7" />
+                  <BarraMacro nome="Gordura" v={nut.macros.gord} pct={Math.round((kG / tot) * 100)} cor="#E8A24E" />
+                </>
+              );
+            })()}
           </div>
         </div>
       )}
@@ -622,17 +724,17 @@ function AnelMacro({ macros }) {
   );
 }
 
-function BarraMacro({ nome, v, max, cor }) {
+function BarraMacro({ nome, v, pct, cor }) {
   return (
     <div className="trbarmac">
-      <div className="trbarmactop"><span>{nome}</span><span>{v}g</span></div>
-      <div className="trbartrilho"><div className="trbarfill" style={{ width: "100%", background: cor }} /></div>
+      <div className="trbarmactop"><span>{nome}</span><span>{v}g · {pct}%</span></div>
+      <div className="trbartrilho"><div className="trbarfill" style={{ width: Math.max(6, pct) + "%", background: cor }} /></div>
     </div>
   );
 }
 
 // ─── Modal do exercício (vídeo + execução + carga + feito) ────────────────────
-function ExercicioModal({ item, carga, onCarga, feito, onToggleFeito, onFechar }) {
+function ExercicioModal({ item, carga, hist, onCarga, feito, onToggleFeito, onFechar }) {
   const [detalhe, setDetalhe] = useState(null);
   const [erro, setErro] = useState(null);
   const [vi, setVi] = useState(0);
@@ -697,14 +799,16 @@ function ExercicioModal({ item, carga, onCarga, feito, onToggleFeito, onFechar }
           </div>
         )}
 
-        {/* carga do dia */}
+        {/* carga do dia (grava no histórico ao sair do campo) */}
         <div className="trcargamodal">
           <span><IcHalter size={16} /> Carga de hoje</span>
           <div className="trcargamodalin">
-            <input type="text" inputMode="decimal" value={carga ?? ""} placeholder="0" onChange={(e) => { const kg = Number(String(e.target.value).replace(",", ".")); onCarga(Number.isFinite(kg) ? kg : 0); }} />
+            <CargaModalInput carga={carga} hist={hist} onRegistrar={onCarga} nome={item.nome} />
             <span>kg</span>
           </div>
         </div>
+
+        <MiniEvolucao hist={hist} />
 
         {detalhe && (
           <>
@@ -982,7 +1086,7 @@ const css = `
 .trexnome{font-size:14px;font-weight:600;color:var(--ink);}
 .trexmeta{display:flex;align-items:center;gap:5px;font-size:12px;color:var(--mut);font-variant-numeric:tabular-nums;}
 .trexplay{flex:none;color:var(--az);}
-.trcarga{flex:none;}
+.trcarga{position:relative;flex:none;}
 .trcargain{width:52px;min-height:38px;border:1px solid var(--faint);border-radius:9px;text-align:center;font-family:'Space Mono',monospace;font-size:13px;font-weight:700;color:var(--ink);background:#fff;outline:none;padding:0 4px;}
 .trcargain:focus{border-color:var(--az);}
 .trcardio{display:flex;gap:7px;align-items:center;font-size:12.5px;color:#8A5E0E;background:#F4EAD4;border-radius:10px;padding:9px 12px;margin:2px 0 0;}
@@ -1002,7 +1106,7 @@ const css = `
 .trbarmac{}
 .trbarmactop{display:flex;justify-content:space-between;font-size:12px;margin-bottom:4px;color:#DDE6F5;font-variant-numeric:tabular-nums;}
 .trbartrilho{height:8px;background:rgba(255,255,255,.12);border-radius:99px;overflow:hidden;}
-.trbarfill{height:100%;border-radius:99px;}
+.trbarfill{height:100%;border-radius:99px;transition:width .6s cubic-bezier(.2,.8,.2,1);}
 .trdietavazio{text-align:center;background:var(--surf);border:1px solid var(--faint);border-radius:20px;padding:22px 18px;box-shadow:0 1px 0 rgba(255,255,255,.9) inset,0 6px 22px -8px rgba(31,74,150,.20),0 2px 6px -2px rgba(31,74,150,.10);}
 .trdietavazio>p{font-size:14.5px;line-height:1.55;color:var(--ink);margin:0 0 16px;}
 .trcardaptopo{display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;}
@@ -1147,6 +1251,16 @@ const css = `
 @keyframes trcardin{from{opacity:0;transform:translateY(12px);}to{opacity:1;transform:translateY(0);}}
 @keyframes trpop{from{transform:scale(.9);opacity:0;}to{transform:scale(1);opacity:1;}}
 @keyframes trvarre{0%{left:-60%;}55%,100%{left:130%;}}
+/* carga: flash ao salvar + recorde */
+.trcargain.f-ok{border-color:var(--vd);box-shadow:0 0 0 3px rgba(31,163,110,.18);}
+.trcargain.f-recorde{border-color:var(--gold,#C98A24);box-shadow:0 0 0 3px rgba(232,166,60,.28);animation:trcheckpop .35s cubic-bezier(.2,.9,.3,1.4);}
+.trcargamodalin input.f-ok{border-color:var(--vd)!important;box-shadow:0 0 0 3px rgba(31,163,110,.18);}
+.trrecorde{position:absolute;bottom:calc(100% + 4px);right:0;white-space:nowrap;font-family:Inter,sans-serif;font-size:10.5px;font-weight:700;color:#fff;background:linear-gradient(120deg,#E8A24E,#E8722C);padding:3px 8px;border-radius:99px;box-shadow:0 4px 10px -3px rgba(232,114,44,.6);animation:trpop .3s cubic-bezier(.2,.9,.3,1.4);z-index:3;}
+/* mini-evolução de carga (barras) */
+.trevobarras{display:flex;align-items:flex-end;gap:6px;height:70px;padding:4px 0;}
+.trevocol{flex:1;display:flex;align-items:flex-end;justify-content:center;height:100%;}
+.trevobar{width:100%;max-width:26px;border-radius:6px 6px 0 0;background:linear-gradient(180deg,var(--ci),var(--az));box-shadow:0 3px 8px -3px rgba(31,95,230,.5);transition:height .5s cubic-bezier(.2,.8,.2,1);}
+.trevotxt{font-size:13px;line-height:1.5;color:var(--mut);margin:10px 0 0;}
 @media (prefers-reduced-motion:reduce){.tr *,.tr *::before,.tr *::after{animation:none!important;transition:none!important;}}
 @media (max-width:380px){.trescolhas{grid-template-columns:1fr;}.trmetav{font-size:17px;}.trmacrokcal{font-size:32px;}}
 `;

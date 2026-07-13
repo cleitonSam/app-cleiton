@@ -117,10 +117,10 @@ export function estadoPadrao() {
     ],
     weight: { goal: 62, log: [] },
 
-    // Treino: anamnese, plano gerado, cardápio, cargas por exercício e o que foi
-    // feito hoje. Sincroniza entre aparelhos. Os chats de IA NÃO ficam aqui (são
-    // grandes e efêmeros) — vivem só na tela enquanto aberta.
-    treino: { anamnese: null, plano: null, dieta: null, cargas: {}, feito: { data: "", ids: [] } },
+    // Treino: anamnese, plano gerado, cardápio, cargas por exercício, histórico de
+    // carga (pra ver o peso subir) e o que foi feito hoje. Sincroniza entre
+    // aparelhos. Os chats de IA NÃO ficam aqui (grandes e efêmeros).
+    treino: { anamnese: null, plano: null, dieta: null, cargas: {}, cargasHist: {}, feito: { data: "", ids: [] } },
   };
 }
 
@@ -278,11 +278,24 @@ export function normalizar(bruto) {
     const feito = t.feito && typeof t.feito === "object"
       ? { data: dataOuNulo(t.feito.data) || "", ids: Array.isArray(t.feito.ids) ? t.feito.ids.slice(0, 60).map((x) => String(x).slice(0, 40)) : [] }
       : { data: "", ids: [] };
+    // histórico de carga: { exId: [{d:"YYYY-MM-DD", kg}] }, no máximo 20 por exercício
+    const cargasHist = {};
+    if (t.cargasHist && typeof t.cargasHist === "object") {
+      for (const [k, arr] of Object.entries(t.cargasHist)) {
+        if (!Array.isArray(arr)) continue;
+        const limpo = arr
+          .filter((x) => x && dataOuNulo(x.d) && Number.isFinite(+x.kg))
+          .map((x) => ({ d: x.d, kg: num(x.kg, 0, 0, 1000) }))
+          .slice(-20);
+        if (limpo.length) cargasHist[String(k).slice(0, 40)] = limpo;
+      }
+    }
     e.treino = {
       anamnese: t.anamnese && typeof t.anamnese === "object" ? t.anamnese : null,
       plano: t.plano && typeof t.plano === "object" ? t.plano : null,
       dieta: t.dieta && typeof t.dieta === "object" ? t.dieta : null,
       cargas,
+      cargasHist,
       feito,
     };
   }
