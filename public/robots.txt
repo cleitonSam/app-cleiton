@@ -1,0 +1,3 @@
+# App privado, atrás de login. Nada aqui deve ser indexado.
+User-agent: *
+Disallow: /

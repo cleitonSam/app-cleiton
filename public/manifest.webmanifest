@@ -1,0 +1,20 @@
+{
+  "id": "/",
+  "name": "Linha — copiloto de rotina",
+  "short_name": "Linha",
+  "description": "Seu copiloto diário para evoluir e vencer barreiras.",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#E9EFFB",
+  "theme_color": "#0C1A33",
+  "lang": "pt-BR",
+  "dir": "ltr",
+  "categories": ["lifestyle", "productivity", "health"],
+  "icons": [
+    { "src": "/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "/icon-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}

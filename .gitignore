@@ -1,0 +1,18 @@
+node_modules/
+dist/
+.env
+.env.local
+*.log
+.DS_Store
+.env.*
+.next/
+build/
+coverage/
+logs/
+
+# Arquivos do workspace (skills de agente, memória/contexto de outros projetos)
+# que o ambiente sincroniza pra dentro desta pasta. Não fazem parte do app Linha.
+.agents/
+docs/
+AGENTS.md
+GEMINI.md

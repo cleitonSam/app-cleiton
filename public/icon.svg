@@ -1,0 +1,30 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <defs>
+    <radialGradient id="bg" cx="50%" cy="42%" r="75%">
+      <stop offset="0" stop-color="#123056"/>
+      <stop offset="1" stop-color="#0C1A33"/>
+    </radialGradient>
+    <linearGradient id="phgrad" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#3FD0E6"/><stop offset="1" stop-color="#1F5FE6"/>
+    </linearGradient>
+    <linearGradient id="phwing" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#7FE3EE"/><stop offset="1" stop-color="#2A6BE8"/>
+    </linearGradient>
+  </defs>
+  <rect width="512" height="512" fill="url(#bg)"/>
+  <g transform="translate(76 74) scale(3.0)">
+    <ellipse cx="60" cy="62" rx="42" ry="40" fill="#0FB5C7" opacity="0.14"/>
+    <path d="M58 56 C44 44 30 42 14 32 C24 48 26 56 40 62 C47 65 53 63 58 60 Z" fill="url(#phwing)"/>
+    <path d="M62 56 C76 44 90 42 106 32 C96 48 94 56 80 62 C73 65 67 63 62 60 Z" fill="url(#phwing)"/>
+    <path d="M52 57 C42 49 34 47 24 41" stroke="#D6F4F9" stroke-width="2" fill="none" stroke-linecap="round" opacity="0.75"/>
+    <path d="M68 57 C78 49 86 47 96 41" stroke="#D6F4F9" stroke-width="2" fill="none" stroke-linecap="round" opacity="0.75"/>
+    <path d="M60 78 C55 90 51 99 49 109 C57 100 58 97 60 91 C62 97 63 100 71 109 C69 99 65 90 60 78 Z" fill="url(#phgrad)"/>
+    <path d="M60 46 C70 46 75 56 75 66 C75 78 68 86 60 86 C52 86 45 78 45 66 C45 56 50 46 60 46 Z" fill="url(#phgrad)"/>
+    <circle cx="60" cy="44" r="13" fill="url(#phgrad)"/>
+    <path d="M54 33 C56 24 59 22 58 15 C62 21 61 27 62 32 Z" fill="#3FD0E6"/>
+    <path d="M63 33 C65 25 68 23 68 17 C70 24 68 29 66 33 Z" fill="#0FB5C7"/>
+    <path d="M56 47 L64 47 L60 54 Z" fill="#F0A63C"/>
+    <circle cx="54" cy="42" r="3" fill="#0C1A33"/><circle cx="66" cy="42" r="3" fill="#0C1A33"/>
+    <circle cx="55.1" cy="41" r="1" fill="#fff"/><circle cx="67.1" cy="41" r="1" fill="#fff"/>
+  </g>
+</svg>

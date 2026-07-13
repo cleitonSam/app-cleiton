@@ -1,0 +1,21 @@
+# Postgres descartável só para desenvolver e testar na sua máquina.
+# Em produção o banco é o do EasyPanel (typebot_dados) — este arquivo não vai pro deploy.
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: linha-dev-db
+    environment:
+      POSTGRES_USER: linha
+      POSTGRES_PASSWORD: linha
+      POSTGRES_DB: linha
+    ports:
+      - "55432:5432"
+    volumes:
+      - linha-dev-db:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U linha"]
+      interval: 5s
+      retries: 10
+
+volumes:
+  linha-dev-db:
