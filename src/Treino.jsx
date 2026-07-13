@@ -27,6 +27,9 @@ import {
 // Treino (plano + hoje + carga) · Dieta (macros + cardápio) · Personal (chat).
 // Tudo puxando da biblioteca e da base de alimentos reais; nada inventado.
 
+// vibração curta no toque (só onde o aparelho suporta) — dá o "tato" do premium
+const buzz = (p = 10) => { try { navigator.vibrate && navigator.vibrate(p); } catch {} };
+
 const OBJETIVOS = [
   { v: "Ganho de massa", t: "Ganhar massa", d: "Engordar com músculo", ic: IcHalter, cor: "#1F5FE6" },
   { v: "Emagrecimento", t: "Emagrecer", d: "Perder gordura com saúde", ic: IcChama, cor: "#E85C8A" },
@@ -81,48 +84,51 @@ export default function Treino({ s, setS, iaAtiva }) {
       <style>{css}</style>
 
       <div className="trtabs">
-        <button className={"trtab" + (["plano", "intro"].includes(vista) ? " on" : "")} onClick={() => setVista(temPlano ? "plano" : "intro")}>
+        <button className={"trtab" + (["plano", "intro"].includes(vista) ? " on" : "")} onClick={() => { buzz(6); setVista(temPlano ? "plano" : "intro"); }}>
           <IcHalter size={18} /> Treino
         </button>
-        <button className={"trtab" + (vista === "dieta" ? " on" : "")} onClick={() => setVista("dieta")}>
+        <button className={"trtab" + (vista === "dieta" ? " on" : "")} onClick={() => { buzz(6); setVista("dieta"); }}>
           <IcMaca size={18} /> Dieta
         </button>
-        <button className={"trtab" + (vista === "personal" ? " on" : "")} onClick={() => setVista("personal")}>
+        <button className={"trtab" + (vista === "personal" ? " on" : "")} onClick={() => { buzz(6); setVista("personal"); }}>
           <IcApito size={18} /> Personal
         </button>
       </div>
 
-      {vista === "intro" && <Intro onComecar={() => setVista("anamnese")} />}
+      {/* key={vista}: cada troca de sub-aba entra com um fade suave (fim do "pisca") */}
+      <div key={vista} className="trvista">
+        {vista === "intro" && <Intro onComecar={() => setVista("anamnese")} />}
 
-      {vista === "anamnese" && (
-        <Anamnese
-          inicial={treino.anamnese}
-          pesoSalvo={pesoSalvo}
-          onCancelar={() => setVista(temPlano ? "plano" : "intro")}
-          onPronto={(anamnese, plano) => {
-            salvarPlano(anamnese, plano);
-            setVista("plano");
-          }}
-        />
-      )}
+        {vista === "anamnese" && (
+          <Anamnese
+            inicial={treino.anamnese}
+            pesoSalvo={pesoSalvo}
+            onCancelar={() => setVista(temPlano ? "plano" : "intro")}
+            onPronto={(anamnese, plano) => {
+              salvarPlano(anamnese, plano);
+              setVista("plano");
+            }}
+          />
+        )}
 
-      {vista === "plano" && temPlano && (
-        <Plano
-          plano={treino.plano}
-          anamnese={treino.anamnese}
-          cargas={cargas}
-          feitoHoje={feitoHoje}
-          onCarga={setCarga}
-          onToggleFeito={toggleFeito}
-          onRefazer={() => setVista("anamnese")}
-          onAbrirEx={setExAberto}
-        />
-      )}
-      {vista === "plano" && !temPlano && <Intro onComecar={() => setVista("anamnese")} />}
+        {vista === "plano" && temPlano && (
+          <Plano
+            plano={treino.plano}
+            anamnese={treino.anamnese}
+            cargas={cargas}
+            feitoHoje={feitoHoje}
+            onCarga={setCarga}
+            onToggleFeito={toggleFeito}
+            onRefazer={() => setVista("anamnese")}
+            onAbrirEx={setExAberto}
+          />
+        )}
+        {vista === "plano" && !temPlano && <Intro onComecar={() => setVista("anamnese")} />}
 
-      {vista === "dieta" && <Dieta anamnese={treino.anamnese} dieta={treino.dieta} onDieta={setDieta} iaAtiva={iaAtiva} temAnamnese={!!treino.anamnese} onFazerAnamnese={() => setVista("anamnese")} />}
+        {vista === "dieta" && <Dieta anamnese={treino.anamnese} dieta={treino.dieta} onDieta={setDieta} iaAtiva={iaAtiva} temAnamnese={!!treino.anamnese} onFazerAnamnese={() => setVista("anamnese")} />}
 
-      {vista === "personal" && <Chat agente="personal" anamnese={treino.anamnese} plano={treino.plano} iaAtiva={iaAtiva} />}
+        {vista === "personal" && <Chat agente="personal" anamnese={treino.anamnese} plano={treino.plano} iaAtiva={iaAtiva} />}
+      </div>
 
       {exAberto && (
         <ExercicioModal
@@ -331,6 +337,23 @@ function Plano({ plano, anamnese, cargas, feitoHoje, onCarga, onToggleFeito, onR
   const [aberto, setAberto] = useState(0);
   const nut = calcNutri(anamnese);
 
+  // progresso do dia (todos os exercícios do plano marcados hoje)
+  const todosEx = plano.treinos.flatMap((t) => t.exercicios);
+  const feitosTotal = todosEx.filter((e) => feitoHoje.includes(e.id)).length;
+
+  // detecta quando um bloco A/B/C acabou de fechar, pra vibrar (a celebração
+  // visual aparece via CSS/JSX). Guarda o estado anterior de cada treino.
+  const antesRef = useRef({});
+  useEffect(() => {
+    plano.treinos.forEach((t) => {
+      const completo = t.exercicios.length > 0 && t.exercicios.every((e) => feitoHoje.includes(e.id));
+      if (completo && !antesRef.current[t.nome]) buzz([16, 60, 24]); // fechou agora
+      antesRef.current[t.nome] = completo;
+    });
+  }, [feitoHoje, plano]);
+
+  const marcar = (exId) => { buzz(10); onToggleFeito(exId); };
+
   return (
     <div className="trplano">
       <div className="trplanotopo">
@@ -355,6 +378,14 @@ function Plano({ plano, anamnese, cargas, feitoHoje, onCarga, onToggleFeito, onR
         <IcRelogio size={16} /> {plano.prescricao.series} séries · {plano.prescricao.reps} reps · descanso {plano.prescricao.descanso}
       </div>
 
+      {/* progresso agregado do dia — a barra cresce a cada exercício marcado */}
+      {feitosTotal > 0 && (
+        <div className="trprogwrap">
+          <div className="trprog"><div className="trprogfill" style={{ width: (feitosTotal / (todosEx.length || 1)) * 100 + "%" }} /></div>
+          <span className="trprogtxt">{feitosTotal} de {todosEx.length} exercícios feitos hoje</span>
+        </div>
+      )}
+
       <div className="trtreinos">
         {plano.treinos.map((t, i) => {
           const on = aberto === i;
@@ -362,7 +393,7 @@ function Plano({ plano, anamnese, cargas, feitoHoje, onCarga, onToggleFeito, onR
           const completo = feitos === t.exercicios.length;
           return (
             <div key={t.nome} className={"trtreino" + (on ? " on" : "") + (completo ? " done" : "")}>
-              <button className="trtreinohead" onClick={() => setAberto(on ? -1 : i)}>
+              <button className="trtreinohead" onClick={() => { buzz(6); setAberto(on ? -1 : i); }}>
                 <span className="trtreinoletra">{completo ? <IcCheque size={22} /> : t.nome.replace("Treino ", "")}</span>
                 <span className="trtreinoinfo">
                   <strong>{t.nome}</strong>
@@ -370,13 +401,14 @@ function Plano({ plano, anamnese, cargas, feitoHoje, onCarga, onToggleFeito, onR
                 </span>
                 <span className={"trchev" + (on ? " ab" : "")}><IcChevron size={18} /></span>
               </button>
+              {completo && <div className="trcelebra">🔥 {t.nome} fechado! {t.exercicios.length} exercícios. Bora pro próximo.</div>}
               {on && (
                 <div className="trexlista">
                   {t.exercicios.map((ex) => {
                     const feito = feitoHoje.includes(ex.id);
                     return (
                       <div key={ex.id} className={"trex" + (feito ? " feito" : "")}>
-                        <button className={"trexcheck" + (feito ? " on" : "")} onClick={() => onToggleFeito(ex.id)} aria-label={feito ? "Desmarcar" : "Marcar como feito"}>
+                        <button className={"trexcheck" + (feito ? " on" : "")} onClick={() => marcar(ex.id)} aria-label={feito ? "Desmarcar" : "Marcar como feito"}>
                           {feito ? <IcCheque size={16} /> : null}
                         </button>
                         <button className="trexcorpo" onClick={() => onAbrirEx(ex)}>
@@ -485,7 +517,12 @@ function Dieta({ anamnese, dieta, onDieta, iaAtiva, temAnamnese, onFazerAnamnese
       )}
 
       {/* cardápio */}
-      {!dieta ? (
+      {gerando && !dieta ? (
+        <div className="trcardapskel">
+          <p className="trskeltxt"><IcMaca size={16} /> Montando seu cardápio nas suas calorias…</p>
+          {[0, 1, 2, 3].map((i) => <div key={i} className="trrefskel" />)}
+        </div>
+      ) : !dieta ? (
         <div className="trdietavazio">
           <p>Quer que eu monte seu cardápio do dia, com comida de verdade e nas suas calorias?</p>
           <button className="trbtn grande" disabled={gerando || !iaAtiva} onClick={() => gerar()}>
@@ -694,7 +731,7 @@ function ExercicioModal({ item, carga, onCarga, feito, onToggleFeito, onFechar }
 
         {/* barra de ação fixa no rodapé da folha: FEITO em destaque */}
         <div className="trmodalacoes">
-          <button className={"trbtn feito" + (feito ? " on" : "")} onClick={() => { onToggleFeito(); if (!feito) onFechar(); }}>
+          <button className={"trbtn feito" + (feito ? " on" : "")} onClick={() => { buzz(feito ? 8 : 18); onToggleFeito(); if (!feito) onFechar(); }}>
             {feito ? <><IcCheque size={18} /> Feito hoje</> : <><IcCheque size={18} /> Marcar como feito</>}
           </button>
           <button className="trbtn ghost" onClick={onFechar}>Fechar</button>
@@ -844,9 +881,10 @@ const css = `
 .tr{--az:#1F5FE6;--ci:#0FB5C7;--vd:#1FA36E;--ink:#0C1A33;--mut:#5A6B87;--faint:#D6E0F0;--surf:#fff;}
 .tr *{box-sizing:border-box;}
 
-.trtabs{display:flex;gap:6px;background:#E2ECFC;padding:4px;border-radius:14px;margin-bottom:18px;position:sticky;top:calc(8px + env(safe-area-inset-top));z-index:20;}
-.trtab{flex:1;min-height:44px;display:flex;align-items:center;justify-content:center;gap:6px;border:none;background:transparent;border-radius:10px;font-family:Inter,sans-serif;font-size:13.5px;font-weight:600;color:var(--mut);cursor:pointer;transition:background .2s,color .2s;}
-.trtab.on{background:#fff;color:var(--az);box-shadow:0 2px 6px -2px rgba(31,74,150,.3);}
+.trtabs{display:flex;gap:6px;background:rgba(226,236,252,.85);-webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px);padding:4px;border-radius:14px;margin-bottom:18px;position:sticky;top:calc(8px + env(safe-area-inset-top));z-index:20;box-shadow:0 2px 10px rgba(12,26,51,.06);}
+.trtab{flex:1;min-height:44px;display:flex;align-items:center;justify-content:center;gap:6px;border:none;background:transparent;border-radius:10px;font-family:Inter,sans-serif;font-size:13.5px;font-weight:600;color:var(--mut);cursor:pointer;transition:background .2s,color .2s,transform .12s;}
+.trtab:active{transform:scale(.96);}
+.trtab.on{background:#fff;color:var(--az);box-shadow:0 1px 3px rgba(12,26,51,.12);animation:trtabpop .32s cubic-bezier(.35,1.1,.4,1);}
 
 .trbtn{min-height:50px;padding:0 20px;background:linear-gradient(120deg,var(--ci),var(--az));color:#fff;border:none;border-radius:13px;font-family:Inter,sans-serif;font-weight:700;font-size:15px;cursor:pointer;box-shadow:0 10px 22px -10px rgba(31,95,230,.7);transition:filter .15s,transform .12s;}
 .trbtn:hover:not(:disabled){filter:brightness(1.06);}
@@ -890,7 +928,8 @@ const css = `
 .trseg{display:flex;gap:6px;flex-wrap:wrap;}
 .trseg.mini .trsegb{padding:0 12px;}
 .trsegb{flex:1;min-width:70px;min-height:44px;padding:0 10px;border:1px solid var(--faint);background:var(--surf);border-radius:11px;font-family:Inter,sans-serif;font-size:13.5px;font-weight:600;color:var(--mut);cursor:pointer;transition:all .18s;}
-.trsegb.on{background:var(--az);border-color:var(--az);color:#fff;box-shadow:0 6px 14px -6px rgba(31,95,230,.7);}
+.trsegb.on{background:var(--az);border-color:var(--az);color:#fff;transform:translateY(-1px);box-shadow:0 6px 14px -6px rgba(31,95,230,.7);}
+.trsegb:active,.trfreqb:active,.trmultib:active,.trparqi:active{transform:scale(.97);}
 .trfreq{display:grid;grid-template-columns:repeat(6,1fr);gap:6px;}
 .trfreqb{min-height:48px;border:1px solid var(--faint);background:var(--surf);border-radius:12px;font-family:'Space Mono',monospace;font-size:15px;font-weight:700;color:var(--mut);cursor:pointer;transition:all .18s;}
 .trfreqb.on{background:linear-gradient(135deg,var(--az),#3E7BF0);border-color:transparent;color:#fff;transform:translateY(-2px);box-shadow:0 8px 16px -6px rgba(31,95,230,.7);}
@@ -914,12 +953,12 @@ const css = `
 .trplanoh{font-family:'Bricolage Grotesque',sans-serif;font-size:24px;font-weight:800;letter-spacing:-.02em;margin:4px 0 3px;}
 .trplanosub{font-size:13.5px;color:var(--mut);margin:0;}
 .trmetas{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:14px;}
-.trmeta{background:radial-gradient(120% 130% at 80% 0%,#22508F,#0C1A33);border-radius:14px;padding:12px 6px;text-align:center;box-shadow:0 10px 22px -12px rgba(12,26,51,.6);}
+.trmeta{background:radial-gradient(120% 130% at 18% 0%,#22508F,#0C1A33);border-radius:15px;padding:12px 6px;text-align:center;box-shadow:0 10px 22px -12px rgba(12,26,51,.6),0 1px 0 rgba(255,255,255,.06) inset;}
 .trmetav{display:block;font-family:'Bricolage Grotesque',sans-serif;font-size:19px;font-weight:800;color:#fff;font-variant-numeric:tabular-nums;}
 .trmetal{display:block;font-size:10px;color:#9FB4D6;margin-top:3px;}
 .trprescricao{display:flex;align-items:center;gap:8px;background:#E2ECFC;border-radius:12px;padding:11px 14px;font-size:13px;font-weight:600;color:var(--az);margin-bottom:16px;}
 .trtreinos{display:flex;flex-direction:column;gap:10px;}
-.trtreino{background:var(--surf);border:1px solid var(--faint);border-radius:16px;overflow:hidden;box-shadow:0 4px 14px -8px rgba(31,74,150,.2);transition:box-shadow .2s,border-color .2s;}
+.trtreino{background:var(--surf);border:1px solid var(--faint);border-radius:20px;overflow:hidden;box-shadow:0 1px 0 rgba(255,255,255,.9) inset,0 6px 22px -8px rgba(31,74,150,.20),0 2px 6px -2px rgba(31,74,150,.10);transition:box-shadow .2s,border-color .2s;}
 .trtreino.on{box-shadow:0 12px 28px -14px rgba(31,74,150,.4);border-color:rgba(31,95,230,.4);}
 .trtreino.done{border-color:rgba(31,163,110,.5);}
 .trtreinohead{width:100%;display:flex;align-items:center;gap:13px;padding:14px;background:transparent;border:none;cursor:pointer;font-family:Inter,sans-serif;text-align:left;}
@@ -928,15 +967,16 @@ const css = `
 .trtreinoinfo{flex:1;display:flex;flex-direction:column;gap:2px;min-width:0;}
 .trtreinoinfo strong{font-size:15px;color:var(--ink);}
 .trtreinoinfo span{font-size:12.5px;color:var(--mut);}
-.trchev{color:var(--mut);transition:transform .25s;}
+.trchev{color:var(--mut);transition:transform .28s cubic-bezier(.35,1.1,.4,1);}
 .trchev.ab{transform:rotate(90deg);color:var(--az);}
 .trexlista{padding:0 12px 12px;display:flex;flex-direction:column;gap:8px;animation:trfade .25s ease;}
 @keyframes trfade{from{opacity:0;transform:translateY(-6px);}to{opacity:1;transform:translateY(0);}}
 .trex{display:flex;align-items:center;gap:9px;padding:8px 9px;background:#F6F9FF;border:1px solid var(--faint);border-radius:13px;transition:border-color .2s,background .2s,opacity .2s;}
 .trex.feito{background:#EAF7F0;border-color:rgba(31,163,110,.4);}
 .trex.feito .trexnome{text-decoration:line-through;color:var(--mut);}
-.trexcheck{flex:none;width:30px;height:30px;border-radius:9px;border:1.5px solid var(--faint);background:#fff;color:#fff;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all .18s cubic-bezier(.2,.9,.3,1.5);}
-.trexcheck.on{background:linear-gradient(135deg,var(--vd),#3FD0A6);border-color:transparent;}
+.trexcheck{position:relative;flex:none;width:30px;height:30px;border-radius:9px;border:1.5px solid var(--faint);background:#fff;color:#fff;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all .18s cubic-bezier(.2,.9,.3,1.5);}
+.trexcheck.on{background:linear-gradient(135deg,var(--vd),#3FD0A6);border-color:transparent;animation:trcheckpop .3s cubic-bezier(.2,.9,.3,1.4);}
+.trexcheck.on::before{content:"";position:absolute;inset:-8px;border-radius:13px;border:2px solid var(--vd);animation:trcheckhalo .5s ease-out;pointer-events:none;}
 .trexcorpo{flex:1;display:flex;align-items:center;gap:10px;background:transparent;border:none;cursor:pointer;text-align:left;font-family:Inter,sans-serif;min-width:0;padding:0;}
 .trexinfo{flex:1;display:flex;flex-direction:column;gap:2px;min-width:0;}
 .trexnome{font-size:14px;font-weight:600;color:var(--ink);}
@@ -950,7 +990,9 @@ const css = `
 .trdica svg{flex:none;margin-top:1px;color:var(--az);}
 
 /* dieta */
-.trmacrocard{background:radial-gradient(130% 130% at 85% 0%,#1B3C77,#0C1A33);border-radius:20px;padding:18px;margin-bottom:16px;box-shadow:0 16px 34px -16px rgba(12,26,51,.6);color:#fff;}
+.trmacrocard{position:relative;overflow:hidden;background:radial-gradient(130% 130% at 85% 0%,#1B3C77,#0C1A33);border-radius:22px;padding:18px;margin-bottom:16px;box-shadow:0 18px 40px -14px rgba(12,26,51,.55),0 1px 0 rgba(255,255,255,.07) inset;color:#fff;}
+.trmacrocard::before{content:"";position:absolute;inset:-40% -10% auto -10%;height:150%;pointer-events:none;background:radial-gradient(45% 42% at 30% 18%,rgba(63,208,230,.22),transparent 70%),radial-gradient(42% 40% at 82% 8%,rgba(90,148,242,.24),transparent 72%);animation:auroraflutua 12s ease-in-out infinite;}
+.trmacrocard>*{position:relative;}
 .trmacrotopo{display:flex;justify-content:space-between;align-items:center;gap:12px;margin-bottom:16px;}
 .trmacroeye{display:flex;align-items:center;gap:6px;font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:#7FE3EE;font-weight:700;}
 .trmacrokcal{font-family:'Bricolage Grotesque',sans-serif;font-size:38px;font-weight:800;line-height:1;margin:8px 0 4px;font-variant-numeric:tabular-nums;}
@@ -961,7 +1003,7 @@ const css = `
 .trbarmactop{display:flex;justify-content:space-between;font-size:12px;margin-bottom:4px;color:#DDE6F5;font-variant-numeric:tabular-nums;}
 .trbartrilho{height:8px;background:rgba(255,255,255,.12);border-radius:99px;overflow:hidden;}
 .trbarfill{height:100%;border-radius:99px;}
-.trdietavazio{text-align:center;background:var(--surf);border:1px solid var(--faint);border-radius:18px;padding:22px 18px;box-shadow:0 6px 18px -10px rgba(31,74,150,.25);}
+.trdietavazio{text-align:center;background:var(--surf);border:1px solid var(--faint);border-radius:20px;padding:22px 18px;box-shadow:0 1px 0 rgba(255,255,255,.9) inset,0 6px 22px -8px rgba(31,74,150,.20),0 2px 6px -2px rgba(31,74,150,.10);}
 .trdietavazio>p{font-size:14.5px;line-height:1.55;color:var(--ink);margin:0 0 16px;}
 .trcardaptopo{display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;}
 .trcardaph{font-family:'Bricolage Grotesque',sans-serif;font-size:19px;font-weight:800;margin:0;}
@@ -969,7 +1011,7 @@ const css = `
 .trcardaptotais{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px;}
 .trcardaptotais span{font-family:'Space Mono',monospace;font-size:12px;font-weight:700;color:var(--az);background:#E2ECFC;padding:5px 11px;border-radius:99px;}
 .trrefeicoes{display:flex;flex-direction:column;gap:10px;}
-.trrefeicao{background:var(--surf);border:1px solid var(--faint);border-radius:15px;padding:14px;box-shadow:0 4px 14px -8px rgba(31,74,150,.2);}
+.trrefeicao{background:var(--surf);border:1px solid var(--faint);border-radius:20px;padding:15px;box-shadow:0 1px 0 rgba(255,255,255,.9) inset,0 6px 22px -8px rgba(31,74,150,.20),0 2px 6px -2px rgba(31,74,150,.10);}
 .trrefhead{display:flex;align-items:center;gap:10px;margin-bottom:10px;}
 .trrefic{flex:none;width:38px;height:38px;border-radius:11px;background:linear-gradient(135deg,var(--vd),#3FD0A6);color:#fff;display:flex;align-items:center;justify-content:center;}
 .trrefinfo{flex:1;display:flex;flex-direction:column;gap:1px;}
@@ -988,7 +1030,7 @@ const css = `
 .tralimnome{font-size:13.5px;font-weight:600;color:var(--ink);}
 .tralimmac{font-family:'Space Mono',monospace;font-size:11.5px;color:var(--mut);}
 .tralimmac em{font-style:normal;opacity:.7;}
-.trperguntar{margin-top:20px;background:var(--surf);border:1px solid var(--faint);border-radius:14px;overflow:hidden;}
+.trperguntar{margin-top:20px;background:var(--surf);border:1px solid var(--faint);border-radius:20px;overflow:hidden;box-shadow:0 1px 0 rgba(255,255,255,.9) inset,0 6px 22px -8px rgba(31,74,150,.20),0 2px 6px -2px rgba(31,74,150,.10);}
 .trperguntar>summary{padding:15px;font-family:Inter,sans-serif;font-size:14px;font-weight:600;color:var(--vd);cursor:pointer;display:flex;align-items:center;gap:8px;list-style:none;}
 .trperguntar>summary::-webkit-details-marker{display:none;}
 .trperguntar[open]>summary{border-bottom:1px solid var(--faint);}
@@ -1011,10 +1053,10 @@ const css = `
 .trexsub{display:flex;align-items:center;gap:5px;font-size:12.5px;color:var(--mut);margin:3px 0 0;font-variant-numeric:tabular-nums;}
 .trvidwrap{margin-bottom:14px;}
 .trvid{width:100%;border-radius:16px;background:#0C1A33;aspect-ratio:1;object-fit:cover;box-shadow:0 14px 30px -14px rgba(12,26,51,.5);}
-.trvidload{width:100%;aspect-ratio:1;border-radius:16px;background:#E2ECFC;display:flex;align-items:center;justify-content:center;color:var(--mut);font-size:13px;margin-bottom:14px;}
+.trvidload{width:100%;aspect-ratio:1;border-radius:16px;background:linear-gradient(120deg,#DCE7FA,#EEF3FD,#DCE7FA);background-size:200% 100%;animation:trshine 1.3s linear infinite;display:flex;align-items:center;justify-content:center;color:var(--mut);font-size:13px;margin-bottom:14px;}
 .trvidbtns{display:flex;gap:6px;margin-top:8px;}
-.trvidb{flex:1;min-height:38px;border:1px solid var(--faint);background:#fff;border-radius:10px;font-family:Inter,sans-serif;font-size:13px;font-weight:600;color:var(--mut);cursor:pointer;}
-.trvidb.on{background:var(--az);border-color:var(--az);color:#fff;}
+.trvidb{flex:1;min-height:40px;border:1px solid var(--faint);background:transparent;border-radius:11px;font-family:Inter,sans-serif;font-size:13px;font-weight:600;color:var(--mut);cursor:pointer;transition:all .18s;}
+.trvidb.on{background:var(--az);border-color:var(--az);color:#fff;box-shadow:0 5px 12px -5px rgba(31,95,230,.6);}
 .trcargamodal{display:flex;align-items:center;justify-content:space-between;background:#fff;border:1px solid var(--faint);border-radius:13px;padding:12px 14px;margin-bottom:14px;}
 .trcargamodal>span{display:flex;align-items:center;gap:8px;font-size:14px;font-weight:600;color:var(--ink);}
 .trcargamodalin{display:flex;align-items:center;gap:6px;}
@@ -1070,6 +1112,41 @@ const css = `
 .trchatoff p{font-size:14px;line-height:1.6;margin:0 0 6px;}
 .trchatoff code{font-family:'Space Mono',monospace;font-size:12px;background:#E2ECFC;padding:2px 6px;border-radius:6px;color:var(--az);}
 
+/* progresso do dia */
+.trprogwrap{margin-bottom:16px;}
+.trprog{height:9px;background:#E2ECFC;border-radius:99px;overflow:hidden;box-shadow:0 1px 2px rgba(12,26,51,.06) inset;}
+.trprogfill{height:100%;background:linear-gradient(90deg,var(--az),var(--ci));border-radius:99px;transition:width .5s cubic-bezier(.2,.8,.2,1);box-shadow:0 0 10px rgba(15,181,199,.5);}
+.trprogtxt{display:block;font-size:12px;color:var(--mut);margin-top:6px;font-variant-numeric:tabular-nums;}
+/* celebração ao fechar um bloco */
+.trcelebra{position:relative;overflow:hidden;background:linear-gradient(100deg,var(--az),var(--ci));color:#fff;font-weight:700;font-size:13.5px;padding:11px 14px;border-radius:12px;margin:0 12px 12px;box-shadow:0 10px 24px -10px rgba(31,95,230,.6);animation:trpop .35s cubic-bezier(.2,.9,.3,1.3);}
+.trcelebra::after{content:"";position:absolute;top:0;left:-60%;width:50%;height:100%;background:linear-gradient(100deg,transparent,rgba(255,255,255,.45),transparent);transform:skewX(-18deg);animation:trvarre 2.4s ease-in-out .3s infinite;}
+.trtreino.done{border-color:rgba(31,163,110,.55);}
+.trtreino.done .trtreinoletra{background:linear-gradient(135deg,var(--vd),#3FD0A6);animation:trdonepop .5s cubic-bezier(.2,.9,.3,1.5);}
+/* skeleton do cardápio (a espera vira antecipação) */
+.trcardapskel{}
+.trskeltxt{display:flex;align-items:center;gap:8px;font-size:14px;color:var(--vd);font-weight:600;margin:0 0 14px;}
+.trrefskel{height:80px;border-radius:20px;background:linear-gradient(120deg,#E9EFFB,#F6F9FF,#E9EFFB);background-size:200% 100%;animation:trshine 1.3s linear infinite;margin-bottom:10px;}
+/* fade de troca de sub-aba + entrada escalonada dos cards */
+.trvista{animation:trfade .28s cubic-bezier(.2,.7,.3,1);}
+.trtreinos>.trtreino{animation:trcardin .4s cubic-bezier(.2,.7,.3,1) both;}
+.trtreinos>.trtreino:nth-child(1){animation-delay:.04s;}
+.trtreinos>.trtreino:nth-child(2){animation-delay:.10s;}
+.trtreinos>.trtreino:nth-child(3){animation-delay:.16s;}
+.trtreinos>.trtreino:nth-child(4){animation-delay:.22s;}
+.trrefeicoes>.trrefeicao{animation:trcardin .38s ease both;}
+.trrefeicoes>.trrefeicao:nth-child(2){animation-delay:.05s;}
+.trrefeicoes>.trrefeicao:nth-child(3){animation-delay:.10s;}
+.trrefeicoes>.trrefeicao:nth-child(4){animation-delay:.15s;}
+.trrefeicoes>.trrefeicao:nth-child(5){animation-delay:.20s;}
+.trrefeicoes>.trrefeicao:nth-child(6){animation-delay:.25s;}
+@keyframes trcheckpop{0%{transform:scale(.7);}60%{transform:scale(1.16);}100%{transform:scale(1);}}
+@keyframes trcheckhalo{0%{opacity:.6;transform:scale(.8);}100%{opacity:0;transform:scale(1.6);}}
+@keyframes trshine{0%{background-position:200% 0;}100%{background-position:-200% 0;}}
+@keyframes trtabpop{from{transform:scale(.94);}to{transform:scale(1);}}
+@keyframes trdonepop{0%{transform:scale(1);}40%{transform:scale(1.18) rotate(-4deg);}100%{transform:scale(1) rotate(0);}}
+@keyframes trcardin{from{opacity:0;transform:translateY(12px);}to{opacity:1;transform:translateY(0);}}
+@keyframes trpop{from{transform:scale(.9);opacity:0;}to{transform:scale(1);opacity:1;}}
+@keyframes trvarre{0%{left:-60%;}55%,100%{left:130%;}}
 @media (prefers-reduced-motion:reduce){.tr *,.tr *::before,.tr *::after{animation:none!important;transition:none!important;}}
 @media (max-width:380px){.trescolhas{grid-template-columns:1fr;}.trmetav{font-size:17px;}.trmacrokcal{font-size:32px;}}
 `;

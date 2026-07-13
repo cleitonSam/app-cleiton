@@ -147,41 +147,58 @@ export function gerarPlano(anamnese = {}) {
   const presc = prescricao(objetivo);
 
   // quantos exercícios por grupo, pelo nível
-  const porGrupoQtd = nivel === "Avançado" ? 2 : nivel === "Intermediário" ? 1 : 1;
+  // Quantos exercícios cabem no treino, PELO TEMPO que a pessoa tem (a resposta da
+  // anamnese vira volume real): 30 min = enxuto, 60+ = treino completo. O nível
+  // ajusta um pouco pra cima/baixo. É isso que faz o plano "bater com as respostas".
+  const alvoPorTempo = { "30 min": 4, "45 min": 6, "60 min": 7, "60+ min": 9 }[anamnese.tempo] || 6;
+  const bonusNivel = nivel === "Avançado" ? 1 : nivel === "Iniciante" ? -1 : 0;
+  const maxPorGrupo = nivel === "Avançado" ? 3 : nivel === "Intermediário" ? 2 : 1;
 
   const letras = "ABCDEF";
   const usados = new Set(); // não repetir o mesmo exercício no plano todo
 
   const treinos = split.dias.map((grupos, i) => {
-    const exercicios = [];
+    const alvo = Math.max(grupos.length, alvoPorTempo + bonusNivel); // pelo menos 1 por grupo
+    // candidatos ordenados por grupo (carro-chefe primeiro), sem repetir no plano
+    const fila = new Map(); // grupo -> [candidatos]
     for (const grupo of grupos) {
-      const candidatos = (porGrupo.get(grupo) || [])
-        .filter((e) => niveis(nivel).includes(e.nivel))
-        .filter((e) => equipCasa(equip, e.equip))
-        .filter((e) => !usados.has(e.id))
-        // básicos e canônicos primeiro (Supino, Agachamento, Remada…), pra o
-        // treino "fazer sentido" logo de cara em vez de trazer variação obscura.
-        .sort((a, b) => pontuar(grupo, b) - pontuar(grupo, a));
-      const escolhidos = candidatos.slice(0, porGrupoQtd);
-      for (const e of escolhidos) {
-        usados.add(e.id);
-        exercicios.push({
-          id: e.id,
-          nome: e.nome,
-          grupo: e.grupo,
-          equip: e.equip,
-          series: presc.series,
-          reps: presc.reps,
-          descanso: presc.descanso,
-        });
-      }
+      fila.set(
+        grupo,
+        (porGrupo.get(grupo) || [])
+          .filter((e) => niveis(nivel).includes(e.nivel))
+          .filter((e) => equipCasa(equip, e.equip))
+          .filter((e) => !usados.has(e.id))
+          .sort((a, b) => pontuar(grupo, b) - pontuar(grupo, a))
+      );
     }
-    return {
-      nome: `Treino ${letras[i]}`,
-      foco: resumirFoco(grupos),
-      grupos,
-      exercicios,
+    const contagem = Object.fromEntries(grupos.map((g) => [g, 0]));
+    const exercicios = [];
+
+    const pegar = (grupo) => {
+      const lista = fila.get(grupo);
+      const e = lista && lista.find((x) => !usados.has(x.id));
+      if (!e) return false;
+      usados.add(e.id);
+      contagem[grupo]++;
+      exercicios.push({ id: e.id, nome: e.nome, grupo: e.grupo, equip: e.equip, series: presc.series, reps: presc.reps, descanso: presc.descanso });
+      return true;
     };
+
+    // 1ª passada: garante ao menos 1 exercício de cada grupo do dia.
+    for (const grupo of grupos) pegar(grupo);
+    // 2ª+: completa até o alvo do tempo, dando prioridade aos grupos grandes (na ordem).
+    let voltas = 0;
+    while (exercicios.length < alvo && voltas < 30) {
+      voltas++;
+      let addou = false;
+      for (const grupo of grupos) {
+        if (exercicios.length >= alvo) break;
+        if (contagem[grupo] < maxPorGrupo && pegar(grupo)) addou = true;
+      }
+      if (!addou) break; // acabaram os candidatos
+    }
+
+    return { nome: `Treino ${letras[i]}`, foco: resumirFoco(grupos), grupos, exercicios };
   });
 
   return {
