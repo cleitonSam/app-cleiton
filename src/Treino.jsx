@@ -1,4 +1,5 @@
 import React, { useEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { api, conversarIA, semConexao } from "./api.js";
 import { iso } from "./estado.js";
 import {
@@ -123,7 +124,16 @@ export default function Treino({ s, setS, iaAtiva }) {
 
       {vista === "personal" && <Chat agente="personal" anamnese={treino.anamnese} plano={treino.plano} iaAtiva={iaAtiva} />}
 
-      {exAberto && <ExercicioModal item={exAberto} carga={cargas[exAberto.id]} onCarga={(kg) => setCarga(exAberto.id, kg)} onFechar={() => setExAberto(null)} />}
+      {exAberto && (
+        <ExercicioModal
+          item={exAberto}
+          carga={cargas[exAberto.id]}
+          onCarga={(kg) => setCarga(exAberto.id, kg)}
+          feito={feitoHoje.includes(exAberto.id)}
+          onToggleFeito={() => toggleFeito(exAberto.id)}
+          onFechar={() => setExAberto(null)}
+        />
+      )}
     </section>
   );
 }
@@ -584,8 +594,8 @@ function BarraMacro({ nome, v, max, cor }) {
   );
 }
 
-// ─── Modal do exercício (vídeo + execução + carga) ────────────────────────────
-function ExercicioModal({ item, carga, onCarga, onFechar }) {
+// ─── Modal do exercício (vídeo + execução + carga + feito) ────────────────────
+function ExercicioModal({ item, carga, onCarga, feito, onToggleFeito, onFechar }) {
   const [detalhe, setDetalhe] = useState(null);
   const [erro, setErro] = useState(null);
   const [vi, setVi] = useState(0);
@@ -601,10 +611,29 @@ function ExercicioModal({ item, carga, onCarga, onFechar }) {
     };
   }, [item.id, onFechar]);
 
+  // Trava o fundo enquanto a folha está aberta (senão o treino rola por trás no iPhone).
+  useEffect(() => {
+    const y = window.scrollY;
+    const { style } = document.body;
+    const antes = { position: style.position, top: style.top, width: style.width };
+    style.position = "fixed";
+    style.top = `-${y}px`;
+    style.width = "100%";
+    return () => {
+      style.position = antes.position;
+      style.top = antes.top;
+      style.width = antes.width;
+      window.scrollTo(0, y);
+    };
+  }, []);
+
   const passos = (detalhe?.passos || "").split("\n").map((l) => l.trim()).filter(Boolean);
   const dicas = (detalhe?.dicas || "").split("\n").map((l) => l.trim()).filter(Boolean);
 
-  return (
+  // createPortal: renderiza a folha direto no <body>, FORA da seção do treino.
+  // A seção tem um transform (da animação de entrada), e position:fixed dentro de
+  // um ancestral com transform vira relativo a ele — era isso que "cortava a tela".
+  return createPortal(
     <div className="trfundo" onClick={onFechar}>
       <div className="trfolha" onClick={(e) => e.stopPropagation()} role="dialog" aria-modal="true" aria-label={item.nome}>
         <div className="trpuxador" />
@@ -614,6 +643,7 @@ function ExercicioModal({ item, carga, onCarga, onFechar }) {
             <h3 className="trexh">{item.nome}</h3>
             <p className="trexsub"><IconeEquip equip={item.equip} size={13} /> {item.series} × {item.reps} · descanso {item.descanso} · {item.grupo}</p>
           </div>
+          <button className="trfechax" onClick={onFechar} aria-label="Fechar">×</button>
         </div>
 
         {erro && <p className="trerro">{erro}</p>}
@@ -630,7 +660,7 @@ function ExercicioModal({ item, carga, onCarga, onFechar }) {
           </div>
         )}
 
-        {/* registrar carga direto no modal */}
+        {/* carga do dia */}
         <div className="trcargamodal">
           <span><IcHalter size={16} /> Carga de hoje</span>
           <div className="trcargamodalin">
@@ -662,9 +692,16 @@ function ExercicioModal({ item, carga, onCarga, onFechar }) {
           </>
         )}
 
-        <button className="trbtn ghost largo" onClick={onFechar}>Fechar</button>
+        {/* barra de ação fixa no rodapé da folha: FEITO em destaque */}
+        <div className="trmodalacoes">
+          <button className={"trbtn feito" + (feito ? " on" : "")} onClick={() => { onToggleFeito(); if (!feito) onFechar(); }}>
+            {feito ? <><IcCheque size={18} /> Feito hoje</> : <><IcCheque size={18} /> Marcar como feito</>}
+          </button>
+          <button className="trbtn ghost" onClick={onFechar}>Fechar</button>
+        </div>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 }
 
@@ -959,7 +996,14 @@ const css = `
 /* modal exercício */
 .trfundo{position:fixed;inset:0;background:rgba(12,26,51,.6);display:flex;align-items:flex-end;justify-content:center;z-index:60;-webkit-backdrop-filter:blur(3px);backdrop-filter:blur(3px);animation:trfundoin .2s;}
 @keyframes trfundoin{from{opacity:0;}to{opacity:1;}}
-.trfolha{background:#F4F7FD;width:100%;max-width:520px;border-radius:22px 22px 0 0;padding:10px 18px calc(24px + env(safe-area-inset-bottom));max-height:92dvh;overflow-y:auto;overscroll-behavior:contain;animation:trsobe .3s cubic-bezier(.2,.8,.2,1);}
+.trfolha{position:relative;background:#F4F7FD;width:100%;max-width:520px;border-radius:22px 22px 0 0;padding:10px 18px 0;max-height:92dvh;overflow-y:auto;overscroll-behavior:contain;animation:trsobe .3s cubic-bezier(.2,.8,.2,1);}
+.trfechax{margin-left:auto;align-self:flex-start;flex:none;width:34px;height:34px;border-radius:10px;border:1px solid var(--faint);background:#fff;color:var(--mut);font-size:22px;line-height:1;cursor:pointer;display:flex;align-items:center;justify-content:center;}
+.trfechax:hover{color:var(--ink);}
+/* barra de ação colada no rodapé da folha: FEITO sempre à mão, mesmo rolando as dicas */
+.trmodalacoes{position:sticky;bottom:0;display:flex;gap:10px;padding:12px 0 calc(16px + env(safe-area-inset-bottom));margin-top:10px;background:linear-gradient(180deg,rgba(244,247,253,0),#F4F7FD 24%);}
+.trmodalacoes .trbtn{flex:1;}
+.trbtn.feito{background:#fff;border:1.5px solid var(--vd);color:var(--vd);box-shadow:none;display:flex;align-items:center;justify-content:center;gap:7px;}
+.trbtn.feito.on{background:linear-gradient(135deg,var(--vd),#3FD0A6);border-color:transparent;color:#fff;box-shadow:0 10px 22px -10px rgba(31,163,110,.7);}
 @keyframes trsobe{from{transform:translateY(30px);}to{transform:translateY(0);}}
 .trpuxador{width:40px;height:4px;border-radius:99px;background:var(--faint);margin:6px auto 14px;}
 .trexcab{display:flex;gap:12px;align-items:center;margin-bottom:14px;}
