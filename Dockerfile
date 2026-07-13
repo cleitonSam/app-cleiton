@@ -44,8 +44,10 @@ EXPOSE 3000
 
 # O EasyPanel usa isso para saber se o container subiu de verdade. O /api/health
 # dá um "select 1" no Postgres, então healthy aqui significa "banco respondendo".
+# Segue a MESMA porta que o app usa ($PORT): se o healthcheck apontar para outra
+# porta, ele falha, o container é marcado não-saudável e o EasyPanel o mata em loop.
 HEALTHCHECK --interval=30s --timeout=5s --start-period=20s --retries=3 \
-  CMD wget -q -O- http://127.0.0.1:3000/api/health || exit 1
+  CMD wget -q -O- "http://127.0.0.1:${PORT:-3000}/api/health" || exit 1
 
 ENTRYPOINT ["/sbin/tini", "--"]
 CMD ["node", "server/index.js"]
