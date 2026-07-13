@@ -1,5 +1,7 @@
 import React, { useState, useEffect, useRef } from "react";
 import PhoenixMascot from "./Fenix.jsx";
+import Treino from "./Treino.jsx";
+import { IcHalter } from "./Icones.jsx";
 import { api } from "./api.js";
 import { descartarLegado, lerLegado } from "./armazenamento.js";
 import {
@@ -703,6 +705,12 @@ export default function Linha({ usuario, onSair, onAdmin }) {
   const [menu, setMenu] = useState(false);
   const [confirmarDia, setConfirmarDia] = useState(false);
   const [legado, setLegado] = useState(null);
+  const [iaAtiva, setIaAtiva] = useState(false);
+
+  // A IA (personal/nutri) só liga se o servidor tiver a chave. Pergunta uma vez.
+  useEffect(() => {
+    api.iaStatus().then((r) => setIaAtiva(!!r?.ativa)).catch(() => setIaAtiva(false));
+  }, []);
 
   const focusFim = useRef(0);
   const focusLen = useRef(0);
@@ -924,9 +932,9 @@ export default function Linha({ usuario, onSair, onAdmin }) {
     const t = e.changedTouches[0];
     const dx = t.clientX - s0.x, dy = t.clientY - s0.y;
     if (Math.abs(dx) > 72 && Math.abs(dy) < 48) {
-      const order = ["hoje", "dicas", "stories"];
+      const order = ["hoje", "treino", "dicas", "stories"];
       const i = order.indexOf(tab);
-      const ni = dx < 0 ? Math.min(2, i + 1) : Math.max(0, i - 1);
+      const ni = dx < 0 ? Math.min(order.length - 1, i + 1) : Math.max(0, i - 1);
       if (ni !== i) { buzz(6); goTab(order[ni]); }
     }
   };
@@ -1551,6 +1559,8 @@ export default function Linha({ usuario, onSair, onAdmin }) {
         <p className="foot">Regra da Linha: não enche mais de 70% do dia. Deixa um espaço pros imprevistos.</p>
         </>)}
 
+        {tab === "treino" && <Treino s={s} setS={setS} iaAtiva={iaAtiva} />}
+
         {tab === "dicas" && <Guides />}
 
         {tab === "stories" && <Stories weekComplete={daysClosed >= 7} handle={s.handle || ""} onHandle={setHandle} />}
@@ -1558,10 +1568,14 @@ export default function Linha({ usuario, onSair, onAdmin }) {
 
       {editing && <Editor state={editing} onSave={saveItem} onDelete={deleteItem} onClose={() => setEditing(null)} />}
       <nav className="bnav">
-        <div className="bnavin" style={{ "--i": { hoje: 0, dicas: 1, stories: 2 }[tab] ?? 0 }}>
+        <div className="bnavin bnav4" style={{ "--i": { hoje: 0, treino: 1, dicas: 2, stories: 3 }[tab] ?? 0 }}>
           <button className={"bitem" + (tab === "hoje" ? " bitem-on" : "")} onClick={() => goTab("hoje")}>
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="9" /><path d="M8.5 12.3l2.3 2.3 4.7-5.1" /></svg>
             Hoje
+          </button>
+          <button className={"bitem" + (tab === "treino" ? " bitem-on" : "")} onClick={() => goTab("treino")}>
+            <IcHalter size={23} sw={2} />
+            Treino
           </button>
           <button className={"bitem" + (tab === "dicas" ? " bitem-on" : "")} onClick={() => goTab("dicas")}>
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M9 18h6" /><path d="M10 21h4" /><path d="M12 3a6 6 0 0 0-3.4 10.9c.7.5 1.1 1.3 1.1 2.1h4.6c0-.8.4-1.6 1.1-2.1A6 6 0 0 0 12 3z" /></svg>
@@ -1982,8 +1996,11 @@ button.sosstep:hover{border-color:${C.blue};}
    (a "refração" da beirada de vidro), em vez de só um blur chapado. */
 .bnav{position:fixed;left:0;right:0;bottom:0;z-index:45;display:flex;justify-content:center;background:rgba(249,251,255,.72);-webkit-backdrop-filter:blur(20px) saturate(1.6);backdrop-filter:blur(20px) saturate(1.6);border-top:1px solid rgba(255,255,255,.7);box-shadow:0 -8px 24px -12px rgba(31,74,150,.25);padding:7px 6px calc(9px + env(safe-area-inset-bottom));}
 .bnavin{position:relative;display:flex;width:100%;max-width:520px;}
-/* pílula que desliza pra aba ativa (posicionada por --i via style inline) */
-.bnavin::before{content:"";position:absolute;top:0;left:calc(var(--i,0) * (100% / 3));width:calc(100% / 3);height:100%;padding:3px;background:linear-gradient(180deg,${C.blueSoft},rgba(226,236,252,.4));border-radius:14px;transition:left .32s cubic-bezier(.35,1.1,.4,1);z-index:0;}
+/* pílula que desliza pra aba ativa (posicionada por --i via style inline).
+   --n = quantas abas (3 padrão, 4 quando tem a de treino). */
+.bnavin{--n:3;}
+.bnavin.bnav4{--n:4;}
+.bnavin::before{content:"";position:absolute;top:0;left:calc(var(--i,0) * (100% / var(--n)));width:calc(100% / var(--n));height:100%;padding:3px;background:linear-gradient(180deg,${C.blueSoft},rgba(226,236,252,.4));border-radius:14px;transition:left .32s cubic-bezier(.35,1.1,.4,1);z-index:0;}
 .bitem{position:relative;z-index:1;flex:1;display:flex;flex-direction:column;align-items:center;gap:3px;background:transparent;border:none;color:${C.muted};font-family:Inter,sans-serif;font-size:11px;font-weight:600;cursor:pointer;padding:6px 0 4px;transition:color .2s,transform .15s;}
 .bitem svg{width:23px;height:23px;transition:transform .25s cubic-bezier(.2,.9,.3,1.5);}
 .bitem:active{transform:scale(.92);}

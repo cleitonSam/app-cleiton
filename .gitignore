@@ -16,3 +16,6 @@ logs/
 docs/
 AGENTS.md
 GEMINI.md
+
+# dados-fonte (xlsx) — já extraídos para server/dados/
+arquivos/

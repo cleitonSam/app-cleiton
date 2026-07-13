@@ -10,6 +10,10 @@ import { semearAdmin } from "./bootstrap.js";
 import rotasAdmin from "./routes/admin.js";
 import rotasAuth from "./routes/auth.js";
 import rotasEstado from "./routes/estado.js";
+import rotasTreino from "./routes/treino.js";
+import rotasIA from "./routes/ia.js";
+import { carregarDados } from "./treino.js";
+import { IA_ATIVA } from "./ia.js";
 
 const AQUI = dirname(fileURLToPath(import.meta.url));
 const DIST = join(AQUI, "..", "dist");
@@ -104,6 +108,8 @@ app.get("/api/health", async () => {
 await app.register(rotasAuth, { prefix: "/api/auth" });
 await app.register(rotasAdmin, { prefix: "/api/admin" });
 await app.register(rotasEstado, { prefix: "/api" });
+await app.register(rotasTreino, { prefix: "/api" });
+await app.register(rotasIA, { prefix: "/api" });
 
 app.setNotFoundHandler((req, reply) => {
   if (req.url.startsWith("/api/")) {
@@ -170,6 +176,7 @@ app.addHook("onSend", async (req, reply, payload) => {
       "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
       "font-src 'self' https://fonts.gstatic.com",
       "img-src 'self' data: blob:",
+      "media-src 'self' blob:", // vídeos de exercício (servidos pelo proxy, mesma origem)
       "connect-src 'self'",
       "base-uri 'self'",
       "form-action 'self'",
@@ -181,8 +188,11 @@ app.addHook("onSend", async (req, reply, payload) => {
   if (PROD) {
     reply.header("strict-transport-security", "max-age=31536000; includeSubDomains");
   }
-  if (req.url.startsWith("/api/")) {
-    // Nunca deixar resposta de API entrar em cache (nem do navegador, nem do SW).
+  if (req.url.startsWith("/api/") && !reply.getHeader("cache-control")) {
+    // Nunca deixar resposta de API entrar em cache — MENOS quando a rota já
+    // definiu o próprio cache-control (o vídeo de exercício, que é imutável e
+    // pode ficar guardado uma semana). Sem o `!getHeader`, este no-store
+    // sobrescreveria e o vídeo seria rebaixado a cada play.
     reply.header("cache-control", "no-store");
   }
   return payload;
@@ -192,7 +202,12 @@ app.addHook("onSend", async (req, reply, payload) => {
 try {
   await migrar();
   await semearAdmin();
+  await carregarDados(); // biblioteca de exercícios + alimentos na memória
   await limparSessoesVencidas();
+
+  if (!IA_ATIVA()) {
+    console.warn("[boot] OPENROUTER_API_KEY não definida: os chats de IA (personal/nutri) ficam desligados. O resto do treino funciona.");
+  }
 
   // Faxina diaria nas sessoes vencidas. unref() pra nao segurar o processo no shutdown.
   setInterval(() => limparSessoesVencidas().catch(() => {}), 24 * 60 * 60 * 1000).unref();

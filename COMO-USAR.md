@@ -59,6 +59,17 @@ Gere o `SESSION_SECRET`:
 node -e "console.log(require('crypto').randomBytes(48).toString('base64url'))"
 ```
 
+> **Use só letras e números no `SESSION_SECRET` e na `ADMIN_SENHA`.** Caracteres como `#`, `$`, `&` são cortados pelo painel (o `#` vira comentário) e a variável chega quebrada.
+
+Opcional — **aba Treino com IA** (personal + nutricionista):
+
+| Variável | Valor |
+|---|---|
+| `OPENROUTER_API_KEY` | sua chave do [OpenRouter](https://openrouter.ai/keys) |
+| `OPENROUTER_MODEL` | `google/gemini-2.5-flash` (padrão, pode omitir) |
+
+Sem essas, a aba Treino ainda funciona (plano, vídeos de execução, biblioteca de exercícios) — só os dois **chats de IA** ficam desligados. A chave fica só no servidor; o navegador nunca a vê.
+
 Em produção, `NODE_ENV=production` já vem da imagem, e o cookie vira `secure` sozinho (só trafega em HTTPS). Não precisa mexer em `COOKIE_SECURE`.
 
 ### 4. Domínio e HTTPS

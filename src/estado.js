@@ -116,6 +116,11 @@ export function estadoPadrao() {
       { id: "r6", t: "21:30", kind: "meal", title: "Ceia (se couber)", detail: "Iogurte integral + castanhas, ou shake de leite com whey", kcal: 260, prot: 18, done: false },
     ],
     weight: { goal: 62, log: [] },
+
+    // Treino: a anamnese e o plano gerado. Sincroniza entre aparelhos (seu treino
+    // aparece no celular e no computador). Os chats de IA NÃO ficam aqui (são
+    // grandes e efêmeros) — vivem só na tela enquanto aberta.
+    treino: { anamnese: null, plano: null },
   };
 }
 
@@ -257,6 +262,16 @@ export function normalizar(bruto) {
     });
   }
   e.history = [...porData.values()].sort((a, b) => a.date.localeCompare(b.date));
+
+  // ── treino (anamnese + plano). Guardado como veio, com limites de segurança:
+  // é dado da própria pessoa, e o formato do plano pode evoluir.
+  if (bruto.treino && typeof bruto.treino === "object") {
+    const t = bruto.treino;
+    e.treino = {
+      anamnese: t.anamnese && typeof t.anamnese === "object" ? t.anamnese : null,
+      plano: t.plano && typeof t.plano === "object" ? t.plano : null,
+    };
+  }
 
   // ── totais vitalícios
   const lt = bruto.lifetime;
