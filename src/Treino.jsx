@@ -1147,9 +1147,12 @@ function ExercicioModal({ item, carga, hist, onCarga, feito, onToggleFeito, onFe
   const [detalhe, setDetalhe] = useState(null);
   const [erro, setErro] = useState(null);
   const [vi, setVi] = useState(0);
+  const [ruins, setRuins] = useState(() => new Set()); // índices de vídeo que não carregaram
 
   useEffect(() => {
     let vivo = true;
+    setVi(0);
+    setRuins(new Set());
     const aoTecla = (e) => e.key === "Escape" && onFechar();
     document.addEventListener("keydown", aoTecla);
     api.treinoExercicio(item.id).then((d) => vivo && setDetalhe(d)).catch((e) => vivo && setErro(semConexao(e) ? "Sem internet." : e.message));
@@ -1158,6 +1161,19 @@ function ExercicioModal({ item, carga, hist, onCarga, feito, onToggleFeito, onFe
       document.removeEventListener("keydown", aoTecla);
     };
   }, [item.id, onFechar]);
+
+  // Se um vídeo não carrega (link caiu, rede oscilou), marca e pula pro próximo
+  // que ainda não falhou. Se todos falharem, o modal mostra um aviso gentil.
+  const aoFalharVideo = () => {
+    const vids = detalhe?.videos || [];
+    setRuins((r) => {
+      const n = new Set(r);
+      n.add(vi);
+      const prox = vids.findIndex((_, i) => !n.has(i));
+      if (prox >= 0 && prox !== vi) setVi(prox);
+      return n;
+    });
+  };
 
   // Trava o fundo enquanto a folha está aberta (senão o treino rola por trás no iPhone).
   useEffect(() => {
@@ -1197,16 +1213,31 @@ function ExercicioModal({ item, carga, hist, onCarga, feito, onToggleFeito, onFe
         {erro && <p className="trerro">{erro}</p>}
         {!detalhe && !erro && <div className="trvidload">carregando vídeo…</div>}
 
-        {detalhe?.videos?.length > 0 && (
-          <div className="trvidwrap">
-            <video key={vi} className="trvid" src={detalhe.videos[vi]} autoPlay loop muted playsInline controls={false} preload="auto" />
-            {detalhe.videos.length > 1 && (
-              <div className="trvidbtns">
-                {detalhe.videos.map((_, i) => <button key={i} className={"trvidb" + (vi === i ? " on" : "")} onClick={() => setVi(i)}>{i === 0 ? "Frente" : "Lado"}</button>)}
+        {(() => {
+          const vids = detalhe?.videos || [];
+          const todosRuins = vids.length > 0 && ruins.size >= vids.length;
+          // sem vídeo (ou todos falharam): aviso gentil, o exercício segue utilizável
+          if (detalhe && (vids.length === 0 || todosRuins)) {
+            return (
+              <div className="trvidindisp">
+                <IcPlay size={22} />
+                <span>Vídeo indisponível para este exercício. O passo a passo está logo abaixo.</span>
               </div>
-            )}
-          </div>
-        )}
+            );
+          }
+          if (!vids.length) return null;
+          const botoes = vids.map((_, i) => (ruins.has(i) ? null : i)).filter((i) => i !== null);
+          return (
+            <div className="trvidwrap">
+              <video key={vi} className="trvid" src={vids[vi]} autoPlay loop muted playsInline controls={false} preload="auto" onError={aoFalharVideo} />
+              {botoes.length > 1 && (
+                <div className="trvidbtns">
+                  {botoes.map((i) => <button key={i} className={"trvidb" + (vi === i ? " on" : "")} onClick={() => setVi(i)}>{i === 0 ? "Frente" : "Lado"}</button>)}
+                </div>
+              )}
+            </div>
+          );
+        })()}
 
         {/* carga do dia (grava no histórico ao sair do campo) */}
         <div className="trcargamodal">
@@ -1567,6 +1598,8 @@ const css = `
 .trvidwrap{margin-bottom:14px;}
 .trvid{width:100%;border-radius:16px;background:#0C1A33;aspect-ratio:1;object-fit:cover;box-shadow:0 14px 30px -14px rgba(12,26,51,.5);}
 .trvidload{width:100%;aspect-ratio:1;border-radius:16px;background:linear-gradient(120deg,#DCE7FA,#EEF3FD,#DCE7FA);background-size:200% 100%;animation:trshine 1.3s linear infinite;display:flex;align-items:center;justify-content:center;color:var(--mut);font-size:13px;margin-bottom:14px;}
+.trvidindisp{display:flex;align-items:center;gap:11px;background:#EAF1FF;border:1px solid var(--faint);border-radius:16px;padding:16px 18px;margin-bottom:14px;color:var(--mut);font-size:13.5px;line-height:1.45;}
+.trvidindisp svg{flex:none;color:var(--az);opacity:.7;}
 .trvidbtns{display:flex;gap:6px;margin-top:8px;}
 .trvidb{flex:1;min-height:40px;border:1px solid var(--faint);background:transparent;border-radius:11px;font-family:Inter,sans-serif;font-size:13px;font-weight:600;color:var(--mut);cursor:pointer;transition:all .18s;}
 .trvidb.on{background:var(--az);border-color:var(--az);color:#fff;box-shadow:0 5px 12px -5px rgba(31,95,230,.6);}
