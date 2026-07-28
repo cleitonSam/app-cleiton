@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from "react";
 import PhoenixMascot from "./Fenix.jsx";
 import Treino from "./Treino.jsx";
+import Estudio from "./Estudio.jsx";
 import { IcHalter } from "./Icones.jsx";
 import { api } from "./api.js";
 import { descartarLegado, lerLegado } from "./armazenamento.js";
@@ -1619,7 +1620,7 @@ export default function Linha({ usuario, onSair, onAdmin }) {
 
         {tab === "dicas" && <Guides />}
 
-        {tab === "stories" && <Stories weekComplete={daysClosed >= 7} handle={s.handle || ""} onHandle={setHandle} />}
+        {tab === "stories" && <Estudio handle={s.handle || ""} onHandle={setHandle} frases={PHRASES.map((p) => p.text)} />}
       </div>
 
       {editing && <Editor state={editing} onSave={saveItem} onDelete={deleteItem} onClose={() => setEditing(null)} />}
@@ -1638,8 +1639,8 @@ export default function Linha({ usuario, onSair, onAdmin }) {
             Dicas
           </button>
           <button className={"bitem" + (tab === "stories" ? " bitem-on" : "")} onClick={() => goTab("stories")}>
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 4.5l1.8 4.2 4.2 1.8-4.2 1.8L12 16.5l-1.8-4.2L6 10.5l4.2-1.8z" /><path d="M18.7 15.5l.7 1.8 1.8.7-1.8.7-.7 1.8-.7-1.8-1.8-.7 1.8-.7z" /></svg>
-            Stories
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="4" y="4" width="16" height="16" rx="3" /><path d="M4 15l4-4 3 3 3-4 6 6" /><circle cx="9" cy="9" r="1.4" /></svg>
+            Criar
           </button>
         </div>
       </nav>
@@ -1762,7 +1763,7 @@ function Editor({ state, onSave, onDelete, onClose }) {
 const shell = { minHeight: "100dvh", background: "#F4F3F1", width: "100%", position: "relative", overflowX: "hidden" };
 
 const css = `
-@import url('https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,700;12..96,800&family=Sacramento&family=Hanken+Grotesk:wght@400;500;600;700&family=Space+Mono:wght@400;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Anton&family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,700;12..96,800&family=Sacramento&family=Hanken+Grotesk:wght@400;500;600;700&family=Space+Mono:wght@400;700&display=swap');
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
 /* Números com largura fixa: não "dançam" ao mudar de 9 pra 10, e alinham em colunas. */
 .tally,.weekbig,.evonum,.wksv,.levelxp,.barnum,.streak,.shield,.kcalchip,.focusclock,.nortejorney,.wbig,.lvlring text,.ringbox text{font-variant-numeric:tabular-nums;}
