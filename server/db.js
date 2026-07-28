@@ -5,8 +5,8 @@ import pg from "pg";
 
 const AQUI = dirname(fileURLToPath(import.meta.url));
 
-// O Postgres do EasyPanel e compartilhado com o Typebot. Duas travas contra
-// encostar nas tabelas dele: o schema proprio "linha" e este search_path.
+// Banco dedicado do app no EasyPanel. Ainda assim tudo vive num schema proprio
+// "linha" (com este search_path): mantem o app isolado e portavel entre bancos.
 export const pool = new pg.Pool({
   connectionString: process.env.DATABASE_URL,
   max: Number(process.env.DB_POOL_MAX || 10),
