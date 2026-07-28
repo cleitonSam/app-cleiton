@@ -431,106 +431,106 @@ const css = `
 /* Mesmo reset da tela de login: sem ele os campos do formulário "criar pessoa"
    estouram a largura (o reset global do app não alcança esta tela). */
 .admshell *{box-sizing:border-box;}
-.admshell{min-height:100dvh;background:linear-gradient(180deg,#EFF4FD 0%,#E9EFFB 42%,#E5ECF8 100%);}
-.admwrap{max-width:560px;margin:0 auto;padding:calc(24px + env(safe-area-inset-top)) 18px calc(40px + env(safe-area-inset-bottom));color:#0C1A33;font-family:Inter,system-ui,sans-serif;}
+.admshell{min-height:100dvh;background:linear-gradient(180deg,#F4F3F1 0%,#F4F3F1 42%,#ECEAE6 100%);}
+.admwrap{max-width:560px;margin:0 auto;padding:calc(24px + env(safe-area-inset-top)) 18px calc(40px + env(safe-area-inset-bottom));color:#0A0A0A;font-family:'Hanken Grotesk',system-ui,sans-serif;}
 
 .admhead{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;margin-bottom:18px;}
-.admeye{font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:#1F5FE6;font-weight:700;}
+.admeye{font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:#0A0A0A;font-weight:700;}
 .admh1{font-family:'Bricolage Grotesque',sans-serif;font-size:26px;font-weight:800;letter-spacing:-.025em;margin:5px 0 0;}
-.admvoltar{flex:none;min-height:44px;padding:0 14px;background:#fff;border:1px solid #D6E0F0;border-radius:11px;color:#1F5FE6;font-family:Inter,sans-serif;font-size:13.5px;font-weight:600;cursor:pointer;}
+.admvoltar{flex:none;min-height:44px;padding:0 14px;background:#fff;border:1px solid #E4E2DE;border-radius:11px;color:#0A0A0A;font-family:'Hanken Grotesk',sans-serif;font-size:13.5px;font-weight:600;cursor:pointer;}
 
-.admalerta{position:relative;overflow:hidden;background:linear-gradient(120deg,#1F5FE6,#0FB5C7);color:#fff;border-radius:14px;padding:13px 15px;font-size:14px;line-height:1.5;margin-bottom:18px;box-shadow:0 10px 24px -12px rgba(31,95,230,.8);}
+.admalerta{position:relative;overflow:hidden;background:linear-gradient(120deg,#0A0A0A,#2C2C30);color:#fff;border-radius:14px;padding:13px 15px;font-size:14px;line-height:1.5;margin-bottom:18px;box-shadow:0 10px 24px -12px rgba(10,10,10,.8);}
 .admalerta::after{content:"";position:absolute;top:0;left:-60%;width:45%;height:100%;background:linear-gradient(100deg,transparent,rgba(255,255,255,.4),transparent);transform:skewX(-18deg);animation:admvarre 3s ease-in-out .4s infinite;}
 @keyframes admvarre{0%{left:-60%;}55%,100%{left:140%;}}
 
-.admtabs{display:flex;gap:6px;background:#E2ECFC;padding:4px;border-radius:12px;margin-bottom:18px;}
-.admtab{flex:1;min-height:44px;border:none;background:transparent;border-radius:9px;font-family:Inter,sans-serif;font-size:14px;font-weight:600;color:#5A6B87;cursor:pointer;}
-.admtab-on{background:#fff;color:#1F5FE6;box-shadow:0 1px 3px rgba(12,26,51,.12);}
+.admtabs{display:flex;gap:6px;background:#ECEAE6;padding:4px;border-radius:12px;margin-bottom:18px;}
+.admtab{flex:1;min-height:44px;border:none;background:transparent;border-radius:9px;font-family:'Hanken Grotesk',sans-serif;font-size:14px;font-weight:600;color:#6E6E73;cursor:pointer;}
+.admtab-on{background:#fff;color:#0A0A0A;box-shadow:0 1px 3px rgba(10,10,10,.12);}
 
 .admnums{display:flex;gap:8px;margin-bottom:14px;}
-.admnum{flex:1;min-height:64px;background:#fff;border:1px solid #D6E0F0;border-radius:14px;padding:10px 6px;cursor:pointer;font-family:Inter,sans-serif;transition:border-color .15s,box-shadow .15s;}
-.admnum-on{border-color:#1F5FE6;box-shadow:0 0 0 2px rgba(31,95,230,.14);}
+.admnum{flex:1;min-height:64px;background:#fff;border:1px solid #E4E2DE;border-radius:14px;padding:10px 6px;cursor:pointer;font-family:'Hanken Grotesk',sans-serif;transition:border-color .15s,box-shadow .15s;}
+.admnum-on{border-color:#0A0A0A;box-shadow:0 0 0 2px rgba(10,10,10,.14);}
 .admnumv{display:block;font-family:'Bricolage Grotesque',sans-serif;font-size:24px;font-weight:800;line-height:1;}
-.admnumv-pendente{color:#C98A24;}
-.admnumv-ativo{color:#1F5FE6;}
-.admnumv-bloqueado{color:#96322C;}
-.admnuml{display:block;font-size:11px;color:#5A6B87;margin-top:5px;}
+.admnumv-pendente{color:#6E6E73;}
+.admnumv-ativo{color:#0A0A0A;}
+.admnumv-bloqueado{color:#0A0A0A;}
+.admnuml{display:block;font-size:11px;color:#6E6E73;margin-top:5px;}
 
 .admbarra{display:flex;gap:8px;margin-bottom:16px;}
-.admbusca{flex:1;min-height:48px;border:1px solid #D6E0F0;border-radius:11px;padding:12px 13px;font-family:Inter,sans-serif;font-size:16px;color:#0C1A33;background:#fff;outline:none;}
-.admbusca:focus{border-color:#1F5FE6;}
-.admadd{flex:none;min-height:48px;padding:0 15px;background:#E2ECFC;border:1px solid rgba(31,95,230,.35);border-radius:11px;color:#1F5FE6;font-family:Inter,sans-serif;font-size:13.5px;font-weight:700;cursor:pointer;white-space:nowrap;}
+.admbusca{flex:1;min-height:48px;border:1px solid #E4E2DE;border-radius:11px;padding:12px 13px;font-family:'Hanken Grotesk',sans-serif;font-size:16px;color:#0A0A0A;background:#fff;outline:none;}
+.admbusca:focus{border-color:#0A0A0A;}
+.admadd{flex:none;min-height:48px;padding:0 15px;background:#ECEAE6;border:1px solid rgba(10,10,10,.35);border-radius:11px;color:#0A0A0A;font-family:'Hanken Grotesk',sans-serif;font-size:13.5px;font-weight:700;cursor:pointer;white-space:nowrap;}
 
-.admerro{background:#FDECEC;border:1px solid #E9B4B1;border-radius:11px;padding:11px 13px;font-size:13.5px;color:#96322C;font-weight:500;margin:0 0 14px;}
-.admok{background:#E2ECFC;border:1px solid rgba(31,95,230,.35);border-radius:11px;padding:11px 13px;font-size:13.5px;color:#1F5FE6;font-weight:600;margin:0 0 14px;}
-.admvazio{text-align:center;color:#5A6B87;font-size:14px;line-height:1.6;padding:32px 12px;}
+.admerro{background:#ECEAE6;border:1px solid #D8D6D0;border-radius:11px;padding:11px 13px;font-size:13.5px;color:#0A0A0A;font-weight:500;margin:0 0 14px;}
+.admok{background:#ECEAE6;border:1px solid rgba(10,10,10,.35);border-radius:11px;padding:11px 13px;font-size:13.5px;color:#0A0A0A;font-weight:600;margin:0 0 14px;}
+.admvazio{text-align:center;color:#6E6E73;font-size:14px;line-height:1.6;padding:32px 12px;}
 
 /* ── o trilho: cada pessoa é um nó. apagado = esperando. aceso = com acesso. */
 .admtrilho{margin-top:4px;}
 .admlinha{display:flex;gap:14px;}
 .admrail{position:relative;width:26px;flex:none;display:flex;justify-content:center;}
-.admfio{position:absolute;top:0;bottom:0;width:2px;background:#D6E0F0;}
+.admfio{position:absolute;top:0;bottom:0;width:2px;background:#E4E2DE;}
 .admfio-fim{bottom:50%;}
-.admno{position:relative;margin-top:20px;width:28px;height:28px;border-radius:50%;border:2px solid #D6E0F0;background:#E9EFFB;z-index:2;color:#fff;font-size:14px;font-weight:700;display:flex;align-items:center;justify-content:center;flex:none;transition:background .3s,border-color .3s,box-shadow .3s;}
+.admno{position:relative;margin-top:20px;width:28px;height:28px;border-radius:50%;border:2px solid #E4E2DE;background:#F4F3F1;z-index:2;color:#fff;font-size:14px;font-weight:700;display:flex;align-items:center;justify-content:center;flex:none;transition:background .3s,border-color .3s,box-shadow .3s;}
 /* o nó pendente pulsa devagar — é ele que pede pra você liberar */
-.admno-pendente{border-color:#C98A24;background:#F9EFD8;animation:noPulsa 2s ease-in-out infinite;}
-@keyframes noPulsa{0%,100%{box-shadow:0 0 0 0 rgba(201,138,36,.4);}50%{box-shadow:0 0 0 6px rgba(201,138,36,0);}}
+.admno-pendente{border-color:#6E6E73;background:#ECEAE6;animation:noPulsa 2s ease-in-out infinite;}
+@keyframes noPulsa{0%,100%{box-shadow:0 0 0 0 rgba(110,110,115,.4);}50%{box-shadow:0 0 0 6px rgba(110,110,115,0);}}
 /* o nó aceso brilha, como um nó da linha do dia marcado */
-.admno-ativo{background:linear-gradient(135deg,#1F5FE6,#0FB5C7);border-color:transparent;box-shadow:0 5px 14px -4px rgba(31,95,230,.7);}
-.admno-bloqueado{border-color:#C0453F;background:#FDECEC;}
+.admno-ativo{background:linear-gradient(135deg,#0A0A0A,#2C2C30);border-color:transparent;box-shadow:0 5px 14px -4px rgba(10,10,10,.7);}
+.admno-bloqueado{border-color:#0A0A0A;background:#ECEAE6;}
 
 .admcorpo{flex:1;min-width:0;padding:14px 0 18px;}
 .admtopo{display:flex;align-items:center;gap:8px;flex-wrap:wrap;}
-.admnome{font-size:15.5px;font-weight:700;color:#0C1A33;display:flex;align-items:center;gap:6px;}
-.admvc{font-family:'Space Mono',monospace;font-size:9.5px;text-transform:uppercase;letter-spacing:.06em;color:#5A6B87;background:#E9EFFB;border:1px solid #D6E0F0;padding:2px 6px;border-radius:99px;}
-.admadmin{font-family:'Space Mono',monospace;font-size:9.5px;text-transform:uppercase;letter-spacing:.06em;color:#1F5FE6;background:#E2ECFC;padding:2px 6px;border-radius:99px;}
+.admnome{font-size:15.5px;font-weight:700;color:#0A0A0A;display:flex;align-items:center;gap:6px;}
+.admvc{font-family:'Space Mono',monospace;font-size:9.5px;text-transform:uppercase;letter-spacing:.06em;color:#6E6E73;background:#F4F3F1;border:1px solid #E4E2DE;padding:2px 6px;border-radius:99px;}
+.admadmin{font-family:'Space Mono',monospace;font-size:9.5px;text-transform:uppercase;letter-spacing:.06em;color:#0A0A0A;background:#ECEAE6;padding:2px 6px;border-radius:99px;}
 .admstatus{margin-left:auto;font-size:11.5px;font-weight:600;}
-.admstatus-pendente{color:#8A5E0E;}
-.admstatus-ativo{color:#1F5FE6;}
-.admstatus-bloqueado{color:#96322C;}
-.admemail{font-size:13.5px;color:#5A6B87;margin:3px 0 0;word-break:break-all;}
-.admmeta{font-family:'Space Mono',monospace;font-size:11px;color:#5A6B87;margin:6px 0 0;line-height:1.5;}
+.admstatus-pendente{color:#0A0A0A;}
+.admstatus-ativo{color:#0A0A0A;}
+.admstatus-bloqueado{color:#0A0A0A;}
+.admemail{font-size:13.5px;color:#6E6E73;margin:3px 0 0;word-break:break-all;}
+.admmeta{font-family:'Space Mono',monospace;font-size:11px;color:#6E6E73;margin:6px 0 0;line-height:1.5;}
 
 .admacoes{display:flex;flex-wrap:wrap;gap:7px;margin-top:11px;}
-.admbtn{min-height:40px;padding:0 13px;background:#fff;border:1px solid #D6E0F0;border-radius:10px;color:#0C1A33;font-family:Inter,sans-serif;font-size:13px;font-weight:600;cursor:pointer;transition:border-color .15s,transform .1s;}
-.admbtn:hover:not(:disabled){border-color:#1F5FE6;color:#1F5FE6;}
+.admbtn{min-height:40px;padding:0 13px;background:#fff;border:1px solid #E4E2DE;border-radius:10px;color:#0A0A0A;font-family:'Hanken Grotesk',sans-serif;font-size:13px;font-weight:600;cursor:pointer;transition:border-color .15s,transform .1s;}
+.admbtn:hover:not(:disabled){border-color:#0A0A0A;color:#0A0A0A;}
 .admbtn:active:not(:disabled){transform:scale(.97);}
 .admbtn:disabled{opacity:.5;cursor:default;}
-.admbtn.liberar{background:#1F5FE6;border-color:#1F5FE6;color:#fff;}
+.admbtn.liberar{background:#0A0A0A;border-color:#0A0A0A;color:#fff;}
 .admbtn.liberar:hover:not(:disabled){filter:brightness(1.08);color:#fff;}
-.admbtn.perigo{background:#C0453F;border-color:#C0453F;color:#fff;}
-.admbtn.perigo-fraco{color:#C0453F;border-color:#E9B4B1;}
-.admbtn.perigo-fraco:hover{border-color:#C0453F;color:#C0453F;}
+.admbtn.perigo{background:#0A0A0A;border-color:#0A0A0A;color:#fff;}
+.admbtn.perigo-fraco{color:#0A0A0A;border-color:#D8D6D0;}
+.admbtn.perigo-fraco:hover{border-color:#0A0A0A;color:#0A0A0A;}
 
-.admconfirma{margin-top:11px;background:#FDECEC;border:1px solid #E9B4B1;border-radius:12px;padding:12px 13px;}
-.admconfirmatxt{font-size:13px;line-height:1.55;color:#96322C;margin:0 0 10px;}
+.admconfirma{margin-top:11px;background:#ECEAE6;border:1px solid #D8D6D0;border-radius:12px;padding:12px 13px;}
+.admconfirmatxt{font-size:13px;line-height:1.55;color:#0A0A0A;margin:0 0 10px;}
 .admconfirma .admacoes{margin-top:0;}
 
 .admlog{display:flex;flex-direction:column;gap:2px;}
-.admevento{display:flex;gap:10px;align-items:baseline;background:#fff;border:1px solid #D6E0F0;border-radius:10px;padding:10px 12px;flex-wrap:wrap;}
-.admeventodata{font-family:'Space Mono',monospace;font-size:11px;color:#5A6B87;flex:none;}
-.admeventoacao{font-family:'Space Mono',monospace;font-size:11.5px;color:#1F5FE6;font-weight:700;}
-.admeventoquem{font-size:12.5px;color:#0C1A33;margin-left:auto;}
+.admevento{display:flex;gap:10px;align-items:baseline;background:#fff;border:1px solid #E4E2DE;border-radius:10px;padding:10px 12px;flex-wrap:wrap;}
+.admeventodata{font-family:'Space Mono',monospace;font-size:11px;color:#6E6E73;flex:none;}
+.admeventoacao{font-family:'Space Mono',monospace;font-size:11.5px;color:#0A0A0A;font-weight:700;}
+.admeventoquem{font-size:12.5px;color:#0A0A0A;margin-left:auto;}
 
-.admfundo{position:fixed;inset:0;background:rgba(12,26,51,.55);display:flex;align-items:flex-end;justify-content:center;z-index:50;}
-.admfolha{background:#E9EFFB;width:100%;max-width:520px;border-radius:20px 20px 0 0;padding:10px 20px calc(26px + env(safe-area-inset-bottom));max-height:92dvh;overflow-y:auto;overscroll-behavior:contain;}
-.admpuxador{width:40px;height:4px;border-radius:99px;background:#D6E0F0;margin:8px auto 14px;}
+.admfundo{position:fixed;inset:0;background:rgba(10,10,10,.55);display:flex;align-items:flex-end;justify-content:center;z-index:50;}
+.admfolha{background:#F4F3F1;width:100%;max-width:520px;border-radius:20px 20px 0 0;padding:10px 20px calc(26px + env(safe-area-inset-bottom));max-height:92dvh;overflow-y:auto;overscroll-behavior:contain;}
+.admpuxador{width:40px;height:4px;border-radius:99px;background:#E4E2DE;margin:8px auto 14px;}
 .admfolhah{font-family:'Bricolage Grotesque',sans-serif;font-size:20px;font-weight:800;margin:0 0 6px;}
-.admfolhap{font-size:13.5px;line-height:1.55;color:#5A6B87;margin:0 0 6px;}
-.admcheck{display:flex;gap:10px;align-items:flex-start;margin-top:16px;font-size:13.5px;line-height:1.5;color:#0C1A33;cursor:pointer;}
-.admcheck input{width:20px;height:20px;flex:none;margin-top:1px;accent-color:#1F5FE6;}
-.admcancelar{width:100%;min-height:48px;background:transparent;border:none;color:#5A6B87;margin-top:6px;font-size:14px;cursor:pointer;font-family:Inter,sans-serif;}
+.admfolhap{font-size:13.5px;line-height:1.55;color:#6E6E73;margin:0 0 6px;}
+.admcheck{display:flex;gap:10px;align-items:flex-start;margin-top:16px;font-size:13.5px;line-height:1.5;color:#0A0A0A;cursor:pointer;}
+.admcheck input{width:20px;height:20px;flex:none;margin-top:1px;accent-color:#0A0A0A;}
+.admcancelar{width:100%;min-height:48px;background:transparent;border:none;color:#6E6E73;margin-top:6px;font-size:14px;cursor:pointer;font-family:'Hanken Grotesk',sans-serif;}
 
 /* O formulário de "criar pessoa" usa os mesmos campos do login. O <style> do
    Login não está montado nesta tela, então as regras precisam existir aqui também. */
-.authlabel{display:block;font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:#5A6B87;font-weight:600;margin:14px 0 6px;}
-.authinput{width:100%;min-height:48px;border:1px solid #D6E0F0;border-radius:11px;padding:12px 13px;font-family:Inter,sans-serif;font-size:16px;color:#0C1A33;background:#fff;outline:none;}
-.authinput:focus{border-color:#1F5FE6;box-shadow:0 0 0 3px rgba(31,95,230,.12);}
-.authbtn{width:100%;min-height:50px;margin-top:20px;background:linear-gradient(120deg,#0FB5C7,#1F5FE6);color:#fff;border:none;border-radius:12px;font-family:Inter,sans-serif;font-weight:700;font-size:15px;cursor:pointer;transition:filter .15s,transform .12s;}
+.authlabel{display:block;font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:#6E6E73;font-weight:600;margin:14px 0 6px;}
+.authinput{width:100%;min-height:48px;border:1px solid #E4E2DE;border-radius:11px;padding:12px 13px;font-family:'Hanken Grotesk',sans-serif;font-size:16px;color:#0A0A0A;background:#fff;outline:none;}
+.authinput:focus{border-color:#0A0A0A;box-shadow:0 0 0 3px rgba(10,10,10,.12);}
+.authbtn{width:100%;min-height:50px;margin-top:20px;background:linear-gradient(120deg,#2C2C30,#0A0A0A);color:#fff;border:none;border-radius:12px;font-family:'Hanken Grotesk',sans-serif;font-weight:700;font-size:15px;cursor:pointer;transition:filter .15s,transform .12s;}
 .authbtn:hover:not(:disabled){filter:brightness(1.05);}
 .authbtn:active:not(:disabled){transform:scale(.98);}
 .authbtn:disabled{opacity:.6;cursor:default;}
 
-button:focus-visible,input:focus-visible{outline:2px solid #1F5FE6;outline-offset:2px;}
+button:focus-visible,input:focus-visible{outline:2px solid #0A0A0A;outline-offset:2px;}
 @media (prefers-reduced-motion:reduce){*,*::before,*::after{animation:none!important;transition:none!important;scroll-behavior:auto!important;}}
 `;

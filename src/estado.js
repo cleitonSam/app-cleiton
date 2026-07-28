@@ -105,7 +105,7 @@ export function estadoPadrao() {
     ],
     items: [
       { id: "r1", t: "07:00", kind: "meal", title: "Café da manhã", detail: "3 ovos, aveia com leite integral, pasta de amendoim, banana, pão", kcal: 700, prot: 32, done: false },
-      { id: "b1", t: "09:00", kind: "block", title: "Deep work da Fluxo", detail: "Construir empresa. Sem WhatsApp, sem Instagram.", kcal: 0, prot: 0, done: false },
+      { id: "b1", t: "09:00", kind: "block", title: "Deep work do negócio", detail: "Construir empresa. Sem WhatsApp, sem Instagram.", kcal: 0, prot: 0, done: false },
       { id: "r2", t: "10:00", kind: "meal", title: "Lanche no escritório", detail: "Castanhas, iogurte integral, sanduíche natural", kcal: 420, prot: 18, done: false },
       { id: "r3", t: "12:00", kind: "meal", title: "Almoço", detail: "Arroz, feijão, 150g de frango ou carne, salada com azeite, fruta", kcal: 780, prot: 45, done: false },
       { id: "b2", t: "13:00", kind: "block", title: "Clientes e reuniões", detail: "Resolver, atender, alinhar. A tarde é pra operação.", kcal: 0, prot: 0, done: false },

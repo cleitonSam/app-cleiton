@@ -119,24 +119,24 @@ export const IcBalanca = svg(
 // ─── Grupos musculares: cor + glyph ───────────────────────────────────────────
 // Cada grupo ganha uma cor e um pequeno desenho, num badge com gradiente.
 const G = {
-  "Peito": { cor: ["#1F5FE6", "#4E86F0"], d: <path d="M4 8c3-1 5-1 8 1 3-2 5-2 8-1 0 5-3 8-8 8s-8-3-8-8z" /> },
-  "Costas": { cor: ["#0FB5C7", "#3FD0E6"], d: <path d="M12 4v16M8 7l-4 3 4 3M16 7l4 3-4 3" /> },
-  "Ombro (frontal)": { cor: ["#7A5CF0", "#9E86F5"], d: <><circle cx="12" cy="9" r="4" /><path d="M6 20a6 6 0 0 1 12 0" /></> },
-  "Ombro (posterior)": { cor: ["#6A4FD0", "#8E76E5"], d: <><circle cx="12" cy="9" r="4" /><path d="M6 20a6 6 0 0 1 12 0" /></> },
-  "Bíceps": { cor: ["#E88A2C", "#F5A94E"], d: <path d="M7 5v6a5 5 0 0 0 10 0c0-3-2-4-2-6M9 16c0 2 1 3 3 3s3-1 3-3" /> },
-  "Tríceps": { cor: ["#C97824", "#E89A4E"], d: <path d="M8 4l-2 8a4 4 0 0 0 8 1l1-6M14 15c1 2 3 3 4 2" /> },
-  "Antebraço": { cor: ["#D08A3C", "#EBAE68"], d: <path d="M6 5l3 9M9 14l6 5M9 14l5-2" /> },
-  "Quadríceps": { cor: ["#1FA36E", "#3FC98E"], d: <path d="M9 3v7l-2 11M15 3v7l2 11M9 10h6" /> },
-  "Posterior de coxa": { cor: ["#178A5E", "#38B07E"], d: <path d="M9 3v8l-2 10M15 3v8l2 10" /> },
-  "Glúteos": { cor: ["#E85C8A", "#F57EAE"], d: <path d="M12 4c-4 0-6 3-6 7 0 3 2 5 3 5s2-2 3-2 2 2 3 2 3-2 3-5c0-4-2-7-6-7z" /> },
-  "Panturrilha": { cor: ["#2E9E86", "#4EC0A6"], d: <path d="M10 3c-2 3-2 7 0 10l-1 8M14 3c2 3 2 8 0 11" /> },
-  "Abdômen": { cor: ["#C98A24", "#E8AC4E"], d: <><rect x="8" y="4" width="8" height="16" rx="2" /><path d="M8 9h8M8 13h8M12 4v16" /></> },
-  "Oblíquos": { cor: ["#B87A34", "#D89C58"], d: <path d="M8 4l8 4M8 9l8 4M8 14l8 4" /> },
-  "Trapézio": { cor: ["#0A8A99", "#2EAEBE"], d: <path d="M12 4l8 6-3 2M12 4L4 10l3 2M12 4v14" /> },
-  "Trapézio médio": { cor: ["#0A7A89", "#2E9EAE"], d: <path d="M12 4l8 6-3 2M12 4L4 10l3 2M12 4v14" /> },
-  "Mãos": { cor: ["#5A6B87", "#7E8DA8"], d: <path d="M8 11V6M11 11V5M14 11V6M17 12V8M8 11c-2 2-1 6 2 8h4c3-1 3-4 3-6" /> },
+  "Peito": { cor: ["#0A0A0A", "#2C2C30"], d: <path d="M4 8c3-1 5-1 8 1 3-2 5-2 8-1 0 5-3 8-8 8s-8-3-8-8z" /> },
+  "Costas": { cor: ["#2C2C30", "#9A9A9E"], d: <path d="M12 4v16M8 7l-4 3 4 3M16 7l4 3-4 3" /> },
+  "Ombro (frontal)": { cor: ["#6E6E73", "#9A9A9E"], d: <><circle cx="12" cy="9" r="4" /><path d="M6 20a6 6 0 0 1 12 0" /></> },
+  "Ombro (posterior)": { cor: ["#6E6E73", "#9A9A9E"], d: <><circle cx="12" cy="9" r="4" /><path d="M6 20a6 6 0 0 1 12 0" /></> },
+  "Bíceps": { cor: ["#6E6E73", "#B8B8BC"], d: <path d="M7 5v6a5 5 0 0 0 10 0c0-3-2-4-2-6M9 16c0 2 1 3 3 3s3-1 3-3" /> },
+  "Tríceps": { cor: ["#6E6E73", "#9A9A9E"], d: <path d="M8 4l-2 8a4 4 0 0 0 8 1l1-6M14 15c1 2 3 3 4 2" /> },
+  "Antebraço": { cor: ["#6E6E73", "#B8B8BC"], d: <path d="M6 5l3 9M9 14l6 5M9 14l5-2" /> },
+  "Quadríceps": { cor: ["#0A0A0A", "#9A9A9E"], d: <path d="M9 3v7l-2 11M15 3v7l2 11M9 10h6" /> },
+  "Posterior de coxa": { cor: ["#0A0A0A", "#9A9A9E"], d: <path d="M9 3v8l-2 10M15 3v8l2 10" /> },
+  "Glúteos": { cor: ["#6E6E73", "#9A9A9E"], d: <path d="M12 4c-4 0-6 3-6 7 0 3 2 5 3 5s2-2 3-2 2 2 3 2 3-2 3-5c0-4-2-7-6-7z" /> },
+  "Panturrilha": { cor: ["#6E6E73", "#9A9A9E"], d: <path d="M10 3c-2 3-2 7 0 10l-1 8M14 3c2 3 2 8 0 11" /> },
+  "Abdômen": { cor: ["#6E6E73", "#9A9A9E"], d: <><rect x="8" y="4" width="8" height="16" rx="2" /><path d="M8 9h8M8 13h8M12 4v16" /></> },
+  "Oblíquos": { cor: ["#6E6E73", "#9A9A9E"], d: <path d="M8 4l8 4M8 9l8 4M8 14l8 4" /> },
+  "Trapézio": { cor: ["#262628", "#9A9A9E"], d: <path d="M12 4l8 6-3 2M12 4L4 10l3 2M12 4v14" /> },
+  "Trapézio médio": { cor: ["#242426", "#9A9A9E"], d: <path d="M12 4l8 6-3 2M12 4L4 10l3 2M12 4v14" /> },
+  "Mãos": { cor: ["#6E6E73", "#9A9A9E"], d: <path d="M8 11V6M11 11V5M14 11V6M17 12V8M8 11c-2 2-1 6 2 8h4c3-1 3-4 3-6" /> },
 };
-const PADRAO = { cor: ["#5A6B87", "#7E8DA8"], d: <circle cx="12" cy="12" r="6" /> };
+const PADRAO = { cor: ["#6E6E73", "#9A9A9E"], d: <circle cx="12" cy="12" r="6" /> };
 
 export function BadgeGrupo({ grupo, size = 34 }) {
   const g = G[grupo] || PADRAO;

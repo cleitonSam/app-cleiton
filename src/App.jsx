@@ -71,14 +71,14 @@ export default function App() {
 
 const carregandoShell = {
   minHeight: "100dvh",
-  background: "linear-gradient(180deg,#EFF4FD 0%,#E9EFFB 42%,#E5ECF8 100%)",
+  background: "linear-gradient(180deg,#F4F3F1 0%,#F4F3F1 42%,#ECEAE6 100%)",
   display: "flex",
   alignItems: "center",
   justifyContent: "center",
 };
 
 const carregandoTxt = {
-  color: "#5A6B87",
-  fontFamily: "Inter,system-ui,sans-serif",
+  color: "#6E6E73",
+  fontFamily: "'Hanken Grotesk',system-ui,sans-serif",
   fontSize: 15,
 };
