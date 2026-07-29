@@ -103,8 +103,8 @@ function cover(c, img, x, y, w, h) { const r = Math.max(w / img.width, h / img.h
 function grain(c, W, H, a) { c.save(); for (let i = 0; i < Math.floor(W * H / 2600); i++) { c.globalAlpha = Math.random() * a; c.fillStyle = Math.random() < 0.5 ? "#fff" : "#000"; c.fillRect(Math.random() * W, Math.random() * H, 2, 2); } c.restore(); }
 
 // marca do topo: chevron duplo no canto superior direito (cor do tema) + contador
-function topo(c, W, p, size, idx, total, mostrarContador) {
-  const x = W - M - size, y = M;
+function topo(c, W, p, size, idx, total, mostrarContador, R, T) {
+  const x = W - R - size, y = T;
   chevron(c, x, y, size, p.ink);
   if (mostrarContador && total > 1) {
     c.textAlign = "right"; c.textBaseline = "alphabetic";
@@ -113,11 +113,11 @@ function topo(c, W, p, size, idx, total, mostrarContador) {
     c.textAlign = "left";
   }
 }
-function rodapeHandle(c, W, H, p, handle) {
+function rodapeHandle(c, W, H, p, handle, L, B) {
   if (!handle) return;
   c.textAlign = "left"; c.textBaseline = "alphabetic";
   c.font = "600 28px 'Hanken Grotesk'"; c.fillStyle = p.mut;
-  c.fillText(handle, M, Math.round(H * 0.926));
+  c.fillText(handle, L, Math.min(Math.round(H * 0.926), H - B - 6));
 }
 // itens de lista: 1 linha = 1 item. tipo 'bullet' (•) ou 'num' (01, 02…)
 function itensDe(texto) {
@@ -153,7 +153,16 @@ function drawLista(c, itens, x, y, maxW, tipo, p, hMax) {
   return cy - y;
 }
 
-const M = 96; // margem lateral fixa (canvas sempre 1080 de largura)
+const M = 96; // margem lateral base (canvas sempre 1080 de largura)
+// insets da área segura por formato (deriva do W×H) — nunca menores que M, então
+// o carrossel 4:5 fica idêntico e só quadrado/story empurram o conteúdo pra dentro.
+function safeDe(W, H) {
+  const s = H >= W * 1.7 ? AREASEGURA.story : H <= W * 1.05 ? AREASEGURA.quadrado : AREASEGURA.carrossel;
+  return {
+    L: Math.max(M, Math.round(s.left * W)), R: Math.max(M, Math.round(s.right * W)),
+    T: Math.max(M, Math.round(s.top * H)), B: Math.max(M, Math.round(s.bottom * H)),
+  };
+}
 
 function draw(c, W, H, sl, idx, total, handle, img) {
   let p = paleta(sl.tema);
@@ -170,27 +179,28 @@ function draw(c, W, H, sl, idx, total, handle, img) {
     p = { bg: PRETO, ink: BRANCO, mut: "#D9D9DB", barbg: BRANCO, barink: PRETO };
   } else { c.fillStyle = p.bg; c.fillRect(0, 0, W, H); grain(c, W, H, 0.028); }
   c.textAlign = "left"; c.textBaseline = "alphabetic";
-  const maxW = W - M * 2;
+  const { L, R, T, B } = safeDe(W, H);
+  const maxW = W - L - R;
 
-  // marca do topo (chevron + contador) — FIXA. Na frase, a aspa faz esse papel.
-  if (sl.tpl !== "frase") topo(c, W, p, sl.tpl === "capa" ? 56 : 48, idx, total, sl.tpl === "conteudo" || sl.tpl === "foto");
+  // marca do topo (chevron + contador) — FIXA, dentro da área segura. Na frase, a aspa faz esse papel.
+  if (sl.tpl !== "frase") topo(c, W, p, sl.tpl === "capa" ? 56 : 48, idx, total, sl.tpl === "conteudo" || sl.tpl === "foto", R, T);
 
   // corpo do slide — ARRASTÁVEL (offset textPos); o chevron e o handle ficam fixos
   const OX = Math.round((sl.textPos?.x || 0) * W), OY = Math.round((sl.textPos?.y || 0) * H);
   c.save(); c.translate(OX, OY);
 
   if (sl.tpl === "capa") {
-    if (sl.palavra) bar(c, sl.palavra, M, Math.round(H * 0.14), 40, p, maxW);
+    if (sl.palavra) bar(c, sl.palavra, L, Math.max(Math.round(H * 0.14), T), 40, p, maxW);
     const t = (sl.titulo || "O SEU GANCHO AQUI").toUpperCase();
     const f = fit(c, t, "Anton", "400", maxW, 4, 104, 68);
     const hy = Math.round(H * 0.33), lh = f.size * 1.04;
     c.fillStyle = p.ink; c.font = "400 " + f.size + "px 'Anton'";
-    f.lines.forEach((l, i) => c.fillText(l, M, hy + i * lh + f.size));
+    f.lines.forEach((l, i) => c.fillText(l, L, hy + i * lh + f.size));
     if (sl.subtitulo) {
       const sf = fit(c, sl.subtitulo, "Hanken Grotesk", "500", maxW, 3, 40, 32);
       c.fillStyle = p.mut; c.font = "500 " + sf.size + "px 'Hanken Grotesk'";
       const sy = hy + f.lines.length * lh + 40;
-      sf.lines.forEach((l, i) => c.fillText(l, M, sy + i * sf.size * 1.35 + sf.size));
+      sf.lines.forEach((l, i) => c.fillText(l, L, sy + i * sf.size * 1.35 + sf.size));
     }
   } else if (sl.tpl === "conteudo") {
     const ty = Math.round(H * 0.235); // baseline fixa do título em todo slide de conteúdo
@@ -200,38 +210,39 @@ function draw(c, W, H, sl, idx, total, handle, img) {
     if (sl.destaque) {
       // título com destaque: cada linha numa barra invertida
       let yy = ty - tf.size;
-      tf.lines.forEach((l) => { const bb = bar(c, l, M, yy, Math.round(tf.size * 0.84), p, maxW); yy += bb.h + 10; });
+      tf.lines.forEach((l) => { const bb = bar(c, l, L, yy, Math.round(tf.size * 0.84), p, maxW); yy += bb.h + 10; });
       by = yy + 24;
     } else {
       c.fillStyle = p.ink; c.font = "800 " + tf.size + "px 'Bricolage Grotesque'";
-      tf.lines.forEach((l, i) => c.fillText(l, M, ty + i * tlh));
+      tf.lines.forEach((l, i) => c.fillText(l, L, ty + i * tlh));
       by = ty + tf.lines.length * tlh + 44;
     }
-    if (sl.palavra) { const bb = bar(c, sl.palavra, M, by, 40, p, maxW); by += bb.h + 40; }
+    if (sl.palavra) { const bb = bar(c, sl.palavra, L, by, 40, p, maxW); by += bb.h + 40; }
     if (sl.lista !== "texto" && itensDe(sl.corpo).length) {
-      const hMax = Math.round(H * (sl.gancho ? 0.82 : 0.9)) - by;
-      drawLista(c, itensDe(sl.corpo), M, by, maxW, sl.lista, p, hMax);
+      const hMax = Math.min(Math.round(H * (sl.gancho ? 0.82 : 0.9)), H - B) - by;
+      drawLista(c, itensDe(sl.corpo), L, by, maxW, sl.lista, p, hMax);
     } else {
       const bf = fit(c, sl.corpo || "Escreve o miolo do slide aqui. Uma ideia só por slide, direto ao ponto.", "Hanken Grotesk", "450", maxW, 9, 40, 32);
       c.fillStyle = p.ink; c.font = "450 " + bf.size + "px 'Hanken Grotesk'"; const blh = bf.size * 1.45;
-      bf.lines.forEach((l, i) => c.fillText(l, M, by + i * blh + bf.size));
+      bf.lines.forEach((l, i) => c.fillText(l, L, by + i * blh + bf.size));
     }
     if (sl.gancho) {
       const gf = fit(c, sl.gancho, "Hanken Grotesk", "500", maxW, 3, 40, 32);
       c.fillStyle = p.mut; c.font = "italic 500 " + gf.size + "px 'Hanken Grotesk'";
-      const gy = Math.round(H * 0.86);
-      gf.lines.forEach((l, i) => c.fillText(l, M, gy + i * gf.size * 1.35 + gf.size));
+      const blocoG = (gf.lines.length - 1) * gf.size * 1.35 + gf.size * 1.2;
+      const gy = Math.min(Math.round(H * 0.86), H - B - Math.round(blocoG) - 8);
+      gf.lines.forEach((l, i) => c.fillText(l, L, gy + i * gf.size * 1.35 + gf.size));
     }
   } else if (sl.tpl === "foto") {
     const t2 = sl.titulo || "Sua frase na foto";
     const f2 = fit(c, t2, "Bricolage Grotesque", "800", maxW, 4, 72, 52);
     const lh2 = f2.size * 1.04, y0 = Math.round(H * 0.7) - (sl.palavra ? 90 : 0);
-    if (sl.palavra) bar(c, sl.palavra, M, y0 - 24, 40, p, maxW);
+    if (sl.palavra) bar(c, sl.palavra, L, y0 - 24, 40, p, maxW);
     c.fillStyle = p.ink; c.font = "800 " + f2.size + "px 'Bricolage Grotesque'";
-    f2.lines.forEach((l, i) => c.fillText(l, M, y0 + 80 + i * lh2 + f2.size));
+    f2.lines.forEach((l, i) => c.fillText(l, L, y0 + 80 + i * lh2 + f2.size));
     if (!img) { c.fillStyle = p.mut; c.font = "600 40px 'Hanken Grotesk'"; c.textAlign = "center"; c.fillText("↑ suba uma imagem no painel", W / 2 - OX, H * 0.5 - OY); c.textAlign = "left"; }
   } else if (sl.tpl === "frase") {
-    c.fillStyle = p.ink; c.font = "800 240px 'Bricolage Grotesque'"; c.fillText("“", M - 8, M + 200);
+    c.fillStyle = p.ink; c.font = "800 240px 'Bricolage Grotesque'"; c.fillText("“", L - 8, T + 200);
     let q = sl.titulo || "Sua frase de impacto aqui.";
     const kw = (sl.palavra || "").trim();
     // pontuação logo após a palavra-chave vai JUNTO dela na barra (sem ponto solto)
@@ -241,61 +252,61 @@ function draw(c, W, H, sl, idx, total, handle, img) {
     const flh = ff.size * 1.12, block = ff.lines.length * flh, fy = Math.round(H * 0.44) - block / 2 + M;
     ff.lines.forEach((l, i) => {
       const yy = fy + i * flh;
-      if (kw && semPont(l) === kw.toLowerCase()) bar(c, l.trim(), M, yy, Math.round(ff.size * 0.86), p, maxW);
-      else { c.fillStyle = p.ink; c.font = "800 " + ff.size + "px 'Bricolage Grotesque'"; c.fillText(l, M, yy + ff.size * 0.82); }
+      if (kw && semPont(l) === kw.toLowerCase()) bar(c, l.trim(), L, yy, Math.round(ff.size * 0.86), p, maxW);
+      else { c.fillStyle = p.ink; c.font = "800 " + ff.size + "px 'Bricolage Grotesque'"; c.fillText(l, L, yy + ff.size * 0.82); }
     });
     const bs = 108;
-    badge(c, M, H - 96 - bs, bs);
+    badge(c, L, H - B - bs, bs);
     c.fillStyle = p.ink; c.font = "700 44px 'Bricolage Grotesque'";
-    c.fillText("Cleiton Sampaio", M + bs + 32, H - 96 - bs * 0.56);
-    if (handle) { c.fillStyle = p.mut; c.font = "500 34px 'Hanken Grotesk'"; c.fillText(handle, M + bs + 32, H - 96 - bs * 0.14); }
+    c.fillText("Cleiton Sampaio", L + bs + 32, H - B - bs * 0.56);
+    if (handle) { c.fillStyle = p.mut; c.font = "500 34px 'Hanken Grotesk'"; c.fillText(handle, L + bs + 32, H - B - bs * 0.14); }
   } else if (sl.tpl === "final") {
     const big = sl.titulo || "Salva pra não esquecer.";
     const lf = fit(c, big, "Bricolage Grotesque", "700", maxW, 3, 56, 44);
     c.fillStyle = p.ink; c.font = "700 " + lf.size + "px 'Bricolage Grotesque'"; const llh = lf.size * 1.1;
     const ly = Math.round(H * 0.2);
-    lf.lines.forEach((l, i) => c.fillText(l, M, ly + i * llh + lf.size));
+    lf.lines.forEach((l, i) => c.fillText(l, L, ly + i * llh + lf.size));
     // BOTÃO CTA — pílula sólida, reservada SÓ pra este slide
     const verbo = (sl.palavra || "comenta QUERO").toUpperCase();
     let vb = 56; c.font = "400 " + vb + "px 'Anton'";
     while (c.measureText(verbo).width + 88 > maxW && vb > 34) { vb -= 2; c.font = "400 " + vb + "px 'Anton'"; }
     const padX = 44, padY = 30, tw = c.measureText(verbo).width;
     const btnY = ly + lf.lines.length * llh + 60, btnH = vb + padY * 2, btnW = tw + padX * 2;
-    c.fillStyle = p.barbg; rr(c, M, btnY, btnW, btnH, 18); c.fill();
+    c.fillStyle = p.barbg; rr(c, L, btnY, btnW, btnH, 18); c.fill();
     c.fillStyle = p.barink; c.font = "400 " + vb + "px 'Anton'"; c.textBaseline = "middle";
-    c.fillText(verbo, M + padX, btnY + btnH / 2 + vb * 0.05); c.textBaseline = "alphabetic";
+    c.fillText(verbo, L + padX, btnY + btnH / 2 + vb * 0.05); c.textBaseline = "alphabetic";
     const instr = sl.corpo || "Comenta a palavra que eu te mando o modelo no direct. E salva pra aplicar essa semana.";
     const inf = fit(c, instr, "Hanken Grotesk", "450", maxW, 5, 40, 32);
     c.fillStyle = p.ink; c.font = "450 " + inf.size + "px 'Hanken Grotesk'"; const ilh = inf.size * 1.45;
     const iy = btnY + btnH + 56;
-    inf.lines.forEach((l, i) => c.fillText(l, M, iy + i * ilh + inf.size));
+    inf.lines.forEach((l, i) => c.fillText(l, L, iy + i * ilh + inf.size));
   } else if (sl.tpl === "mito") {
     // MITO (em cima, riscado, cinza) × VERDADE (embaixo, forte)
-    c.fillStyle = p.mut; c.font = "700 30px 'Bricolage Grotesque'"; c.fillText("MITO", M, Math.round(H * 0.135));
+    c.fillStyle = p.mut; c.font = "700 30px 'Bricolage Grotesque'"; c.fillText("MITO", L, Math.round(H * 0.135));
     const mf = fit(c, sl.titulo || "O que todo mundo repete", "Bricolage Grotesque", "700", maxW, 4, 60, 44);
     c.fillStyle = p.mut; c.font = "700 " + mf.size + "px 'Bricolage Grotesque'";
     const my = Math.round(H * 0.185), mlh = mf.size * 1.1;
     mf.lines.forEach((l, i) => {
-      const yy = my + i * mlh + mf.size; c.fillText(l, M, yy);
+      const yy = my + i * mlh + mf.size; c.fillText(l, L, yy);
       c.strokeStyle = p.mut; c.lineWidth = Math.max(3, mf.size * 0.07);
-      c.beginPath(); c.moveTo(M, yy - mf.size * 0.3); c.lineTo(M + c.measureText(l).width, yy - mf.size * 0.3); c.stroke();
+      c.beginPath(); c.moveTo(L, yy - mf.size * 0.3); c.lineTo(L + c.measureText(l).width, yy - mf.size * 0.3); c.stroke();
     });
     const meio = Math.round(H * 0.5);
-    c.save(); c.globalAlpha = 0.28; c.strokeStyle = p.ink; c.lineWidth = 2; c.beginPath(); c.moveTo(M, meio); c.lineTo(W - M, meio); c.stroke(); c.restore();
-    bar(c, "verdade", M, Math.round(H * 0.55), 40, p, maxW);
+    c.save(); c.globalAlpha = 0.28; c.strokeStyle = p.ink; c.lineWidth = 2; c.beginPath(); c.moveTo(L, meio); c.lineTo(W - R, meio); c.stroke(); c.restore();
+    bar(c, "verdade", L, Math.round(H * 0.55), 40, p, maxW);
     const vf = fit(c, sl.corpo || "O que ninguém tem coragem de falar", "Bricolage Grotesque", "800", maxW, 5, 64, 48);
     c.fillStyle = p.ink; c.font = "800 " + vf.size + "px 'Bricolage Grotesque'";
     const vy = Math.round(H * 0.66), vlh = vf.size * 1.08;
-    vf.lines.forEach((l, i) => c.fillText(l, M, vy + i * vlh + vf.size));
+    vf.lines.forEach((l, i) => c.fillText(l, L, vy + i * vlh + vf.size));
   }
   c.restore();
 
-  // handle fixo no rodapé (frase já tem assinatura própria)
-  if (sl.tpl !== "frase") rodapeHandle(c, W, H, p, handle);
+  // handle fixo no rodapé (frase já tem assinatura própria) — dentro da área segura
+  if (sl.tpl !== "frase") rodapeHandle(c, W, H, p, handle, L, B);
   // dica de arrasto SÓ na capa (fixa)
   if (sl.tpl === "capa" && total > 1) {
     c.textAlign = "right"; c.font = "700 30px 'Bricolage Grotesque'"; c.fillStyle = p.mut;
-    c.fillText("arrasta pro lado  →", W - M, Math.round(H * 0.926)); c.textAlign = "left";
+    c.fillText("arrasta pro lado  →", W - R, Math.min(Math.round(H * 0.926), H - B - 6)); c.textAlign = "left";
   }
 
   // logo/marca do usuário (arrastável), mantém transparência do PNG
