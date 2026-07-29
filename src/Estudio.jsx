@@ -10,6 +10,7 @@ const FMT = { carrossel: { w: 1080, h: 1350 }, quadrado: { w: 1080, h: 1080 }, s
 let _uid = 0;
 const novoSlide = (tpl) => ({
   id: ++_uid, tpl: tpl || "capa", tema: "preto", titulo: "", subtitulo: "", corpo: "", palavra: "", gancho: "", lista: "texto",
+  escala: 1, destaque: false,
   textPos: { x: 0, y: 0 }, imgData: null, imgUso: "logo", logoPos: { x: 0.82, y: 0.14 }, logoScale: 0.2,
 });
 // esqueleto de carrossel profissional (8 slides) — a "receita" da marca
@@ -81,7 +82,9 @@ function wrap(c, text, maxW) {
   return out;
 }
 let _ovf = false; // sinaliza que algum texto não coube nem no tamanho mínimo
+let _escala = 1; // multiplicador de tamanho de texto do slide atual
 function fit(c, text, family, weight, maxW, maxLines, start, min) {
+  start = Math.round(start * _escala); min = Math.round(min * _escala);
   let size = start;
   while (size > min) { c.font = weight + " " + size + "px '" + family + "'"; const ls = wrap(c, text, maxW); if (ls.length <= maxLines) return { size, lines: ls }; size -= 2; }
   c.font = weight + " " + min + "px '" + family + "'"; const ls = wrap(c, text, maxW); if (ls.length > maxLines) _ovf = true; return { size: min, lines: ls };
@@ -145,7 +148,7 @@ const M = 96; // margem lateral fixa (canvas sempre 1080 de largura)
 function draw(c, W, H, sl, idx, total, handle, img) {
   let p = paleta(sl.tema);
   c.clearRect(0, 0, W, H);
-  _ovf = false;
+  _ovf = false; _escala = sl.escala || 1;
   const comLogo = img && sl.imgUso === "logo" && sl.tpl !== "foto";
   const comFundo = img && (sl.imgUso === "fundo" || sl.tpl === "foto");
   if (comFundo) {
@@ -182,9 +185,18 @@ function draw(c, W, H, sl, idx, total, handle, img) {
   } else if (sl.tpl === "conteudo") {
     const ty = Math.round(H * 0.235); // baseline fixa do título em todo slide de conteúdo
     const tf = fit(c, sl.titulo || "Título do slide", "Bricolage Grotesque", "800", maxW, 3, 64, 52);
-    c.fillStyle = p.ink; c.font = "800 " + tf.size + "px 'Bricolage Grotesque'";
-    const tlh = tf.size * 1.08; tf.lines.forEach((l, i) => c.fillText(l, M, ty + i * tlh));
-    let by = ty + tf.lines.length * tlh + 44;
+    const tlh = tf.size * 1.08;
+    let by;
+    if (sl.destaque) {
+      // título com destaque: cada linha numa barra invertida
+      let yy = ty - tf.size;
+      tf.lines.forEach((l) => { const bb = bar(c, l, M, yy, Math.round(tf.size * 0.84), p, maxW); yy += bb.h + 10; });
+      by = yy + 24;
+    } else {
+      c.fillStyle = p.ink; c.font = "800 " + tf.size + "px 'Bricolage Grotesque'";
+      tf.lines.forEach((l, i) => c.fillText(l, M, ty + i * tlh));
+      by = ty + tf.lines.length * tlh + 44;
+    }
     if (sl.palavra) { const bb = bar(c, sl.palavra, M, by, 40, p, maxW); by += bb.h + 40; }
     if (sl.lista !== "texto" && itensDe(sl.corpo).length) {
       const hMax = Math.round(H * (sl.gancho ? 0.82 : 0.9)) - by;
@@ -474,15 +486,25 @@ export default function Estudio({ handle, onHandle, frases, iaAtiva }) {
         <Field label="Modelo do slide">
           <div className="estseg">{seg([{ v: "capa", t: "Capa" }, { v: "conteudo", t: "Conteúdo" }, { v: "foto", t: "Foto" }, { v: "frase", t: "Frase" }, { v: "mito", t: "Mito×V" }, { v: "final", t: "Final" }], sl.tpl, (v) => patch("tpl", v))}</div>
         </Field>
-        <Field label="Fundo">
-          <div className="estseg">{seg([{ v: "preto", t: "Preto" }, { v: "papel", t: "Papel" }], sl.tema, (v) => patch("tema", v))}</div>
-        </Field>
+        <div className="estdupla">
+          <Field label="Fundo">
+            <div className="estseg">{seg([{ v: "preto", t: "Preto" }, { v: "papel", t: "Papel" }], sl.tema, (v) => patch("tema", v))}</div>
+          </Field>
+          <Field label="Tamanho da letra">
+            <div className="estseg">{seg([{ v: 0.85, t: "Menor" }, { v: 1, t: "Médio" }, { v: 1.2, t: "Maior" }, { v: 1.45, t: "Máx" }], sl.escala || 1, (v) => patch("escala", v))}</div>
+          </Field>
+        </div>
         <Field label={{ capa: "Gancho (headline)", conteudo: "Título do slide", foto: "Frase na foto", frase: "Frase", mito: "O mito (o que dizem)", final: "Frase de fecho" }[sl.tpl] || "Título"}>
           <div className="estlinha">
             <textarea className="estarea" value={sl.titulo} onChange={(e) => patch("titulo", e.target.value)} placeholder={sl.tpl === "capa" ? "5 a 8 palavras que param o dedo" : "Escreve aqui…"} rows={2} />
           </div>
           {frases?.length && (sl.tpl === "frase" || sl.tpl === "capa") ? <button className="estlink" onClick={trocarFrase}>trocar por uma frase pronta ↻</button> : null}
         </Field>
+        {sl.tpl === "conteudo" && (
+          <Field label="Destaque do título">
+            <div className="estseg">{seg([{ v: false, t: "Normal" }, { v: true, t: "Destaque (barra)" }], !!sl.destaque, (v) => patch("destaque", v))}</div>
+          </Field>
+        )}
         {sl.tpl === "capa" && (
           <Field label="Subtítulo (menor, cinza)"><input className="estinput" value={sl.subtitulo} onChange={(e) => patch("subtitulo", e.target.value)} placeholder="uma linha de apoio, sem repetir o gancho" /></Field>
         )}
@@ -497,7 +519,7 @@ export default function Estudio({ handle, onHandle, frases, iaAtiva }) {
         {sl.tpl === "conteudo" && (
           <Field label="Gancho de continuidade (puxa o próximo)"><input className="estinput" value={sl.gancho} onChange={(e) => patch("gancho", e.target.value)} placeholder="…e o pior nem é esse →" /></Field>
         )}
-        <Field label={sl.tpl === "final" ? "Verbo do botão (CTA)" : "Palavra-chave (barra invertida)"}><input className="estinput" value={sl.palavra} onChange={(e) => patch("palavra", e.target.value)} maxLength={28} placeholder={sl.tpl === "final" ? "Ex.: comenta QUERO" : "Ex.: em tempo real"} /></Field>
+        <Field label={sl.tpl === "final" ? "Verbo do botão (CTA)" : "Palavra-chave (barra invertida)"}><input className="estinput" value={sl.palavra} onChange={(e) => patch("palavra", e.target.value)} placeholder={sl.tpl === "final" ? "Ex.: comenta QUERO" : "Ex.: em tempo real"} /></Field>
 
         <Field label="Imagem / logo">
           <label className="estupload">
@@ -588,6 +610,7 @@ const css = `
 .estfield{display:grid;gap:8px;}
 .estlbl{font-family:'Bricolage Grotesque',sans-serif;font-weight:700;font-size:11px;letter-spacing:.13em;text-transform:uppercase;color:#6E6E73;}
 .estseg{display:flex;gap:6px;flex-wrap:wrap;}
+.estdupla{display:grid;gap:16px;}
 .estseg-b{flex:1;min-width:60px;border:1px solid #E4E2DE;background:transparent;color:#6E6E73;border-radius:10px;padding:9px 8px;font-family:'Bricolage Grotesque',sans-serif;font-weight:700;font-size:13px;cursor:pointer;transition:all .16s;white-space:nowrap;}
 .estseg-b.on{background:#0A0A0A;color:#F4F3F1;border-color:#0A0A0A;}
 .estseg-b:active{transform:scale(.96);}
