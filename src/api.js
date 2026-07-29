@@ -84,6 +84,7 @@ export const api = {
   nutriAlimentos: (q) => chamar(`/nutri/alimentos?q=${encodeURIComponent(q)}`),
   iaStatus: () => chamar("/ia/status"),
   iaDieta: (anamnese, prefs, pedido) => chamar("/ia/dieta", { metodo: "POST", corpo: { anamnese, prefs, pedido } }),
+  iaLegenda: (slides) => chamar("/ia/legenda", { metodo: "POST", corpo: { slides } }),
   iaPlano: (anamnese, imagem) => chamar("/ia/plano", { metodo: "POST", corpo: { anamnese, imagem } }),
 
   // fotos de check-in (diário)

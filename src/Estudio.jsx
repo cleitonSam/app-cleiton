@@ -1,4 +1,5 @@
 import React, { useEffect, useRef, useState } from "react";
+import { api } from "./api.js";
 
 // ─── Estúdio: gerador de carrossel + story, na identidade Preto & Branco ───────
 // Sobe foto/logo (base64), escolhe o modelo, ARRASTA a imagem pra posicionar,
@@ -22,6 +23,20 @@ const modeloCarrossel = () => [
   { ...novoSlide("frase"), tema: "preto", titulo: "Capa promete. Meio entrega. Fim converte.", palavra: "converte" },
   { ...novoSlide("final"), tema: "preto", titulo: "Salva pra montar o seu essa semana.", palavra: "comenta MODELO", corpo: "Comenta MODELO que eu te mando o passo a passo no direct. E me segue pra não perder o próximo." },
 ];
+const slidesPadrao = () => [
+  { ...novoSlide("capa"), titulo: "O que ninguém te conta sobre começar do zero", palavra: "em tempo real", subtitulo: "a parte que os gurus escondem" },
+  { ...novoSlide("conteudo"), tema: "papel", titulo: "Disciplina > motivação", corpo: "Motivação é o gás do primeiro dia. Disciplina é aparecer no dia 40, quando ninguém tá vendo e a vontade sumiu. É ela que constrói.", gancho: "e tem um jeito de não depender dela →" },
+  { ...novoSlide("final"), titulo: "Salva e bora construir." },
+];
+// rascunho no aparelho: não perde o trabalho ao trocar de aba/fechar
+const STORE = "cs-estudio-v1";
+function carregarRascunho() {
+  try {
+    const d = JSON.parse(localStorage.getItem(STORE));
+    if (d?.slides?.length) { _uid = Math.max(_uid, ...d.slides.map((s) => s.id || 0)); return d; }
+  } catch { /* sem rascunho */ }
+  return null;
+}
 
 // ── helpers de canvas ──
 function rr(c, x, y, w, h, r) { c.beginPath(); c.moveTo(x + r, y); c.arcTo(x + w, y, x + w, y + h, r); c.arcTo(x + w, y + h, x, y + h, r); c.arcTo(x, y + h, x, y, r); c.arcTo(x, y, x + w, y, r); c.closePath(); }
@@ -232,6 +247,24 @@ function draw(c, W, H, sl, idx, total, handle, img) {
     c.fillStyle = p.ink; c.font = "450 " + inf.size + "px 'Hanken Grotesk'"; const ilh = inf.size * 1.45;
     const iy = btnY + btnH + 56;
     inf.lines.forEach((l, i) => c.fillText(l, M, iy + i * ilh + inf.size));
+  } else if (sl.tpl === "mito") {
+    // MITO (em cima, riscado, cinza) × VERDADE (embaixo, forte)
+    c.fillStyle = p.mut; c.font = "700 30px 'Bricolage Grotesque'"; c.fillText("MITO", M, Math.round(H * 0.135));
+    const mf = fit(c, sl.titulo || "O que todo mundo repete", "Bricolage Grotesque", "700", maxW, 4, 60, 44);
+    c.fillStyle = p.mut; c.font = "700 " + mf.size + "px 'Bricolage Grotesque'";
+    const my = Math.round(H * 0.185), mlh = mf.size * 1.1;
+    mf.lines.forEach((l, i) => {
+      const yy = my + i * mlh + mf.size; c.fillText(l, M, yy);
+      c.strokeStyle = p.mut; c.lineWidth = Math.max(3, mf.size * 0.07);
+      c.beginPath(); c.moveTo(M, yy - mf.size * 0.3); c.lineTo(M + c.measureText(l).width, yy - mf.size * 0.3); c.stroke();
+    });
+    const meio = Math.round(H * 0.5);
+    c.save(); c.globalAlpha = 0.28; c.strokeStyle = p.ink; c.lineWidth = 2; c.beginPath(); c.moveTo(M, meio); c.lineTo(W - M, meio); c.stroke(); c.restore();
+    bar(c, "verdade", M, Math.round(H * 0.55), 40, p, maxW);
+    const vf = fit(c, sl.corpo || "O que ninguém tem coragem de falar", "Bricolage Grotesque", "800", maxW, 5, 64, 48);
+    c.fillStyle = p.ink; c.font = "800 " + vf.size + "px 'Bricolage Grotesque'";
+    const vy = Math.round(H * 0.66), vlh = vf.size * 1.08;
+    vf.lines.forEach((l, i) => c.fillText(l, M, vy + i * vlh + vf.size));
   }
   c.restore();
 
@@ -250,14 +283,11 @@ function draw(c, W, H, sl, idx, total, handle, img) {
   }
 }
 
-export default function Estudio({ handle, onHandle, frases }) {
-  const [fmt, setFmt] = useState("carrossel");
+export default function Estudio({ handle, onHandle, frases, iaAtiva }) {
+  const rascunho = useRef(carregarRascunho()).current;
+  const [fmt, setFmt] = useState(rascunho?.fmt || "carrossel");
   const [cur, setCur] = useState(0);
-  const [slides, setSlides] = useState(() => [
-    { ...novoSlide("capa"), titulo: "O que ninguém te conta sobre começar do zero", palavra: "em tempo real" },
-    { ...novoSlide("conteudo"), tema: "papel", titulo: "Disciplina > motivação", corpo: "Motivação é o gás do primeiro dia. Disciplina é aparecer no dia 40, quando ninguém tá vendo e a vontade sumiu. É ela que constrói." },
-    { ...novoSlide("final"), titulo: "Bora construir." },
-  ]);
+  const [slides, setSlides] = useState(() => rascunho?.slides || slidesPadrao());
   const [fontsReady, setFontsReady] = useState(false);
   const [erro, setErro] = useState(null);
   const [salvando, setSalvando] = useState(false);
@@ -285,6 +315,11 @@ export default function Estudio({ handle, onHandle, frases }) {
   }, []);
   // @ padrão da marca, pra já aparecer nos slides
   useEffect(() => { if (!handle) onHandle("@eucleitonsampaio"); }, []); // eslint-disable-line
+  // salva o rascunho a cada mudança (se estourar a cota, salva sem as imagens)
+  useEffect(() => {
+    const gravar = (p) => { try { localStorage.setItem(STORE, JSON.stringify(p)); return true; } catch { return false; } };
+    if (!gravar({ fmt, slides })) gravar({ fmt, slides: slides.map((s) => ({ ...s, imgData: null })) });
+  }, [fmt, slides]);
 
   // imagem carregada (ou dispara load + redraw)
   const imgDe = (dataURL) => {
@@ -363,6 +398,15 @@ export default function Estudio({ handle, onHandle, frases }) {
     try { await navigator.clipboard.writeText(txt); setCopiado(true); setTimeout(() => setCopiado(false), 1600); }
     catch { setLegenda(txt); }
   };
+  const [gerandoIA, setGerandoIA] = useState(false);
+  const gerarLegendaIA = async () => {
+    setGerandoIA(true); setErro(null);
+    try {
+      const r = await api.iaLegenda(slides.map((s) => ({ tpl: s.tpl, titulo: s.titulo, subtitulo: s.subtitulo, corpo: s.corpo, palavra: s.palavra })));
+      if (r?.legenda) setLegenda(r.legenda);
+    } catch (e) { setErro(e.message || "A IA falhou desta vez."); }
+    finally { setGerandoIA(false); }
+  };
 
   // ── salvar (celular: Web Share → Fotos/Instagram; desktop: download) ──
   const nome = (i) => "cleiton-" + fmt + "-" + String(i + 1).padStart(2, "0") + ".png";
@@ -428,12 +472,12 @@ export default function Estudio({ handle, onHandle, frases }) {
           <div className="estseg">{seg([{ v: "carrossel", t: "Carrossel" }, { v: "quadrado", t: "Quadrado" }, { v: "story", t: "Story" }], fmt, setFmt)}</div>
         </Field>
         <Field label="Modelo do slide">
-          <div className="estseg">{seg([{ v: "capa", t: "Capa" }, { v: "conteudo", t: "Conteúdo" }, { v: "foto", t: "Foto" }, { v: "frase", t: "Frase" }, { v: "final", t: "Final" }], sl.tpl, (v) => patch("tpl", v))}</div>
+          <div className="estseg">{seg([{ v: "capa", t: "Capa" }, { v: "conteudo", t: "Conteúdo" }, { v: "foto", t: "Foto" }, { v: "frase", t: "Frase" }, { v: "mito", t: "Mito×V" }, { v: "final", t: "Final" }], sl.tpl, (v) => patch("tpl", v))}</div>
         </Field>
         <Field label="Fundo">
           <div className="estseg">{seg([{ v: "preto", t: "Preto" }, { v: "papel", t: "Papel" }], sl.tema, (v) => patch("tema", v))}</div>
         </Field>
-        <Field label={{ capa: "Gancho (headline)", conteudo: "Título do slide", foto: "Frase na foto", frase: "Frase", final: "Frase de fecho" }[sl.tpl] || "Título"}>
+        <Field label={{ capa: "Gancho (headline)", conteudo: "Título do slide", foto: "Frase na foto", frase: "Frase", mito: "O mito (o que dizem)", final: "Frase de fecho" }[sl.tpl] || "Título"}>
           <div className="estlinha">
             <textarea className="estarea" value={sl.titulo} onChange={(e) => patch("titulo", e.target.value)} placeholder={sl.tpl === "capa" ? "5 a 8 palavras que param o dedo" : "Escreve aqui…"} rows={2} />
           </div>
@@ -447,8 +491,8 @@ export default function Estudio({ handle, onHandle, frases }) {
             <div className="estseg">{seg([{ v: "texto", t: "Parágrafo" }, { v: "bullet", t: "Lista •" }, { v: "num", t: "Números 01" }], sl.lista, (v) => patch("lista", v))}</div>
           </Field>
         )}
-        {(sl.tpl === "conteudo" || sl.tpl === "final") && (
-          <Field label={sl.tpl === "final" ? "Instrução (o que fazer)" : (sl.lista === "texto" ? "Texto do slide (uma ideia só)" : "Itens da lista (uma linha por item)")}><textarea className="estarea" value={sl.corpo} onChange={(e) => patch("corpo", e.target.value)} placeholder={sl.tpl === "final" ? "Comenta X que te mando no direct…" : (sl.lista === "texto" ? "O miolo do slide…" : "Primeiro item\nSegundo item\nTerceiro item")} rows={sl.lista === "texto" ? 3 : 4} /></Field>
+        {(sl.tpl === "conteudo" || sl.tpl === "final" || sl.tpl === "mito") && (
+          <Field label={sl.tpl === "final" ? "Instrução (o que fazer)" : sl.tpl === "mito" ? "A verdade (o que ninguém fala)" : (sl.lista === "texto" ? "Texto do slide (uma ideia só)" : "Itens da lista (uma linha por item)")}><textarea className="estarea" value={sl.corpo} onChange={(e) => patch("corpo", e.target.value)} placeholder={sl.tpl === "final" ? "Comenta X que te mando no direct…" : sl.tpl === "mito" ? "A verdade que muda o jogo…" : (sl.lista === "texto" ? "O miolo do slide…" : "Primeiro item\nSegundo item\nTerceiro item")} rows={sl.lista === "texto" ? 3 : 4} /></Field>
         )}
         {sl.tpl === "conteudo" && (
           <Field label="Gancho de continuidade (puxa o próximo)"><input className="estinput" value={sl.gancho} onChange={(e) => patch("gancho", e.target.value)} placeholder="…e o pior nem é esse →" /></Field>
@@ -489,8 +533,9 @@ export default function Estudio({ handle, onHandle, frases }) {
           <p className="esthint" style={{ margin: "8px 0 10px" }}>A imagem para o dedo; a <b>legenda</b> é o que gera comentário e salvamento. Gera daqui, ajusta e cola no Instagram.</p>
           <textarea className="estarea" value={legenda} onChange={(e) => setLegenda(e.target.value)} rows={8} placeholder="Clique em “Gerar da timeline” que eu monto a legenda a partir dos seus slides…" />
           <div className="estlegacts">
-            <button className="estbtn ghost" onClick={() => setLegenda(gerarLegenda())}>Gerar da timeline ↻</button>
-            <button className="estbtn solid" onClick={copiarLegenda}>{copiado ? "Copiado ✓" : "Copiar legenda"}</button>
+            {iaAtiva && <button className="estbtn ghost" onClick={gerarLegendaIA} disabled={gerandoIA}>{gerandoIA ? "Escrevendo…" : "Gerar com IA ✦"}</button>}
+            <button className="estbtn ghost" onClick={() => setLegenda(gerarLegenda())}>{iaAtiva ? "Sem IA ↻" : "Gerar da timeline ↻"}</button>
+            <button className="estbtn solid" onClick={copiarLegenda}>{copiado ? "Copiado ✓" : "Copiar"}</button>
           </div>
         </details>
       </div>

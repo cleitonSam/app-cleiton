@@ -129,6 +129,60 @@ Regras: os totais devem bater com a meta. Valores numéricos (sem "g" nem "kcal"
     }
   );
 
+  // ─── Legenda de carrossel/post no tom da marca ──────────────────────────────
+  // Recebe os textos dos slides e escreve a legenda pronta pra colar no Instagram.
+  app.post(
+    "/ia/legenda",
+    {
+      config: { rateLimit: { max: 20, timeWindow: "5 minutes" } },
+      schema: {
+        body: {
+          type: "object",
+          properties: {
+            slides: {
+              type: "array", maxItems: 15,
+              items: {
+                type: "object",
+                properties: {
+                  tpl: { type: "string", maxLength: 20 },
+                  titulo: { type: "string", maxLength: 400 },
+                  subtitulo: { type: "string", maxLength: 400 },
+                  corpo: { type: "string", maxLength: 800 },
+                  palavra: { type: "string", maxLength: 60 },
+                },
+              },
+            },
+          },
+        },
+      },
+    },
+    async (req, reply) => {
+      if (!IA_ATIVA()) return reply.code(503).send({ erro: "A IA ainda não foi ligada neste servidor." });
+      const slides = Array.isArray(req.body.slides) ? req.body.slides.slice(0, 15) : [];
+      const resumo = slides
+        .map((s, i) => `Slide ${i + 1} [${s.tpl || "?"}]: ${[s.titulo, s.subtitulo, s.corpo, s.palavra].filter(Boolean).join(" · ")}`)
+        .join("\n") || "(carrossel sem texto)";
+
+      const system = `Você é Cleiton Sampaio (@eucleitonsampaio), criador de conteúdo de Evolução & Negócios no Instagram. Voz: direta, verdadeira, motivadora, calorosa — anti-guru, mostra o que ninguém mostra, constrói de verdade. Escreva a LEGENDA de um carrossel a partir dos slides.
+ESTRUTURA:
+- 1ª linha: um gancho forte (expande a capa, não repete igual).
+- 2 a 4 frases curtas de valor, com quebras de linha (respirável no feed).
+- 1 pergunta que puxa comentário.
+- 1 CTA claro: salvar + comentar uma palavra + chamar no direct.
+- fecha com: Bora construir.
+- depois, uma linha em branco e 8 a 12 hashtags de nicho (empreendedorismo, negócios, disciplina, evolução, mentalidade).
+REGRAS: português do Brasil, sem "segredo", "fórmula mágica", "fique rico rápido", "método infalível". Nada de emojis em excesso (no máximo 2-3). Responda SÓ a legenda, sem aspas, sem título, sem explicação.`;
+
+      try {
+        const texto = await conversar({ system, mensagens: [{ role: "user", content: "Escreve a legenda desse carrossel:\n" + resumo }], maxTokens: 700 });
+        return { legenda: (texto || "").trim() };
+      } catch (e) {
+        req.log.error({ err: e.message }, "falha ao gerar legenda");
+        return reply.code(502).send({ erro: "Não consegui escrever a legenda agora. Tenta de novo." });
+      }
+    }
+  );
+
   // ─── Gerar o PLANO DE TREINO com a IA (opcional: foto dos aparelhos) ─────────
   // A IA monta o plano a partir da anamnese, escolhendo exercícios REAIS da
   // biblioteca (o servidor casa cada nome com o exercício certo, pra ter vídeo).

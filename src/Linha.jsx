@@ -1623,7 +1623,7 @@ export default function Linha({ usuario, onSair, onAdmin }) {
 
         {tab === "dicas" && <Guides />}
 
-        {tab === "stories" && <Estudio handle={s.handle || ""} onHandle={setHandle} frases={PHRASES.map((p) => p.text)} />}
+        {tab === "stories" && <Estudio handle={s.handle || ""} onHandle={setHandle} frases={PHRASES.map((p) => p.text)} iaAtiva={iaAtiva} />}
       </div>
 
       {editing && <Editor state={editing} onSave={saveItem} onDelete={deleteItem} onClose={() => setEditing(null)} />}
