@@ -212,16 +212,19 @@ function paintBg(ctx, W, H, bg) {
   }
   ctx.globalAlpha = 1;
 }
-// Marca d'água CS (substituiu a fênix quando o app entrou na identidade P&B).
+// Marca d'água: chevron duplo pra cima (símbolo da marca Cleiton Sampaio).
 function drawPhoenixEmblem(ctx, cx, topY, k, flat) {
+  const W = cx - 70, H = topY + 760; // recupera as dimensões do jeito que o caller chama
+  const s = W * 0.62; // chevron grande, sangrando pela direita
+  const x = W - s * 0.42, y = H * 0.5 - s * 0.5;
   ctx.save();
-  ctx.translate(cx - 60 * k, topY);
-  ctx.scale(k, k);
-  ctx.fillStyle = flat || "#0A0A0A";
-  ctx.font = "800 108px 'Bricolage Grotesque'";
-  ctx.textAlign = "left";
-  ctx.textBaseline = "alphabetic";
-  ctx.fillText("CS", 0, 92);
+  ctx.translate(x, y);
+  ctx.scale(s / 512, s / 512);
+  ctx.strokeStyle = flat || "#0A0A0A";
+  ctx.lineWidth = 56; ctx.lineCap = "round"; ctx.lineJoin = "round";
+  [[[146, 268], [256, 158], [366, 268]], [[146, 356], [256, 246], [366, 356]]].forEach((pts) => {
+    ctx.beginPath(); pts.forEach((p, i) => (i ? ctx.lineTo(p[0], p[1]) : ctx.moveTo(p[0], p[1]))); ctx.stroke();
+  });
   ctx.restore();
 }
 
