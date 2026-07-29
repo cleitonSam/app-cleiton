@@ -7,6 +7,16 @@ import { api } from "./api.js";
 
 const PRETO = "#0A0A0A", PAPEL = "#F4F3F1", GRAF = "#6E6E73", BRANCO = "#FFFFFF";
 const FMT = { carrossel: { w: 1080, h: 1350 }, quadrado: { w: 1080, h: 1080 }, story: { w: 1080, h: 1920 } };
+// Área segura do Instagram por formato (frações 0..1 da caixa) — pesquisa 2026.
+// É só um guia na edição (linhas tracejadas): NÃO entra na foto salva.
+//  • carrossel 4:5 aparece inteiro no feed; a grade do perfil virou 3:4, corta só ~34px/lado na miniatura.
+//  • story 9:16 tem topo/base cobertos pela UI (e coluna de ícones à direita se virar Reels).
+//  • quadrado 1:1 perde as laterais na grade 3:4 do perfil.
+const AREASEGURA = {
+  carrossel: { top: 0.03, bottom: 0.03, left: 0.04, right: 0.04, nota: "as laterais somem na miniatura do seu perfil" },
+  quadrado: { top: 0.075, bottom: 0.075, left: 0.13, right: 0.13, nota: "no grid do perfil o quadrado perde as laterais" },
+  story: { top: 0.13, bottom: 0.22, left: 0.06, right: 0.11, nota: "topo e base sob os botões; à direita, ícones do Reels" },
+};
 let _uid = 0;
 const novoSlide = (tpl) => ({
   id: ++_uid, tpl: tpl || "capa", tema: "preto", titulo: "", subtitulo: "", corpo: "", palavra: "", gancho: "", lista: "texto",
@@ -303,6 +313,7 @@ export default function Estudio({ handle, onHandle, frases, iaAtiva }) {
   const [fontsReady, setFontsReady] = useState(false);
   const [erro, setErro] = useState(null);
   const [salvando, setSalvando] = useState(false);
+  const [regua, setRegua] = useState(true); // guia de área segura do Instagram (só na edição)
   const cvRef = useRef(null);
   const imgCache = useRef(new Map()); // dataURL -> HTMLImageElement
   const drag = useRef(false);
@@ -452,13 +463,16 @@ export default function Estudio({ handle, onHandle, frases, iaAtiva }) {
 
       <div className="eststage">
         <div className="estcvwrap">
-          <canvas
-            ref={cvRef} className="estcv"
-            onMouseDown={onDown} onMouseMove={onMove} onMouseUp={onUp} onMouseLeave={onUp}
-            onTouchStart={onDown} onTouchMove={onMove} onTouchEnd={onUp}
-            style={{ cursor: "grab", touchAction: "none" }}
-          />
-          <span className="estdicaarrasta">{temLogo() ? "arraste o texto ou o logo pra posicionar" : "arraste pra mover o texto"}</span>
+          <div className="estcvbox">
+            <canvas
+              ref={cvRef} className="estcv"
+              onMouseDown={onDown} onMouseMove={onMove} onMouseUp={onUp} onMouseLeave={onUp}
+              onTouchStart={onDown} onTouchMove={onMove} onTouchEnd={onUp}
+              style={{ cursor: "grab", touchAction: "none" }}
+            />
+            {regua && <SafeArea z={AREASEGURA[fmt]} />}
+            <span className="estdicaarrasta">{temLogo() ? "arraste o texto ou o logo pra posicionar" : "arraste pra mover o texto"}</span>
+          </div>
         </div>
         <div className="estslidebar">
           <button className="estnav" disabled={cur === 0} onClick={() => setCur((c) => c - 1)} aria-label="Anterior">‹</button>
@@ -469,6 +483,7 @@ export default function Estudio({ handle, onHandle, frases, iaAtiva }) {
         </div>
         {aviso && <p className="estaviso">⚠ {aviso}</p>}
         <div className="estacts">
+          <button className={"estbtn ghost" + (regua ? " on" : "")} onClick={() => setRegua((v) => !v)} title="Mostra a área segura do Instagram — não sai na foto">⊞ Régua</button>
           <button className="estbtn ghost" onClick={() => moveSlide(-1)} disabled={cur === 0} title="Mover pra esquerda">◀</button>
           <button className="estbtn ghost" onClick={() => moveSlide(1)} disabled={cur === slides.length - 1} title="Mover pra direita">▶</button>
           <button className="estbtn ghost" onClick={addSlide}>+ Slide</button>
@@ -569,6 +584,22 @@ function Field({ label, children }) {
   return <div className="estfield"><span className="estlbl">{label}</span>{children}</div>;
 }
 
+// Guia de área segura: faixas hachuradas nas zonas de risco + contorno tracejado.
+// É um nó de DOM separado por cima do <canvas>, então nunca entra no toBlob()/PNG.
+function SafeArea({ z }) {
+  const pc = (v) => v * 100 + "%";
+  return (
+    <div className="estsafe" aria-hidden="true">
+      <div className="estsafe-band" style={{ top: 0, left: 0, right: 0, height: pc(z.top) }} />
+      <div className="estsafe-band" style={{ bottom: 0, left: 0, right: 0, height: pc(z.bottom) }} />
+      <div className="estsafe-band" style={{ top: 0, bottom: 0, left: 0, width: pc(z.left) }} />
+      <div className="estsafe-band" style={{ top: 0, bottom: 0, right: 0, width: pc(z.right) }} />
+      <div className="estsafe-box" style={{ top: pc(z.top), right: pc(z.right), bottom: pc(z.bottom), left: pc(z.left) }} />
+      <span className="estsafe-tag">Área segura · {z.nota}</span>
+    </div>
+  );
+}
+
 function Thumb({ s, i, total, handle, fmt, on, img, onClick }) {
   const ref = useRef(null);
   useEffect(() => {
@@ -588,8 +619,14 @@ const css = `
 .estnovo{width:100%;margin-top:14px;font-size:15px;padding:13px 15px;}
 .eststage{margin-bottom:18px;}
 .estcvwrap{position:relative;background:#ECEAE6;border:1px solid #E4E2DE;border-radius:18px;padding:16px;display:grid;place-items:center;box-shadow:0 1px 2px rgba(10,10,10,.04),0 14px 30px -22px rgba(10,10,10,.3);}
+.estcvbox{position:relative;line-height:0;max-width:100%;}
 .estcv{width:auto;max-width:100%;max-height:56vh;height:auto;border-radius:8px;box-shadow:0 16px 40px -20px rgba(10,10,10,.6);display:block;-webkit-user-select:none;user-select:none;}
-.estdicaarrasta{position:absolute;bottom:22px;left:50%;transform:translateX(-50%);background:rgba(10,10,10,.72);color:#F4F3F1;font-size:11.5px;font-weight:600;padding:5px 12px;border-radius:99px;pointer-events:none;-webkit-backdrop-filter:blur(4px);backdrop-filter:blur(4px);}
+.estdicaarrasta{position:absolute;bottom:14px;left:50%;transform:translateX(-50%);background:rgba(10,10,10,.72);color:#F4F3F1;font-size:11.5px;line-height:1.3;font-weight:600;padding:5px 12px;border-radius:99px;pointer-events:none;-webkit-backdrop-filter:blur(4px);backdrop-filter:blur(4px);}
+/* régua de área segura — só na edição, hachura vermelha nas zonas de corte */
+.estsafe{position:absolute;inset:0;pointer-events:none;border-radius:8px;overflow:hidden;}
+.estsafe-band{position:absolute;background:repeating-linear-gradient(-45deg,rgba(226,64,64,.30) 0 5px,rgba(226,64,64,.09) 5px 11px);}
+.estsafe-box{position:absolute;border:1.5px dashed rgba(255,255,255,.95);border-radius:4px;box-shadow:0 0 0 1.5px rgba(10,10,10,.45),inset 0 0 0 1px rgba(10,10,10,.18);}
+.estsafe-tag{position:absolute;top:8px;left:50%;transform:translateX(-50%);max-width:94%;background:rgba(10,10,10,.82);color:#F4F3F1;font-family:'Hanken Grotesk',sans-serif;font-weight:600;font-size:10px;line-height:1.25;padding:5px 9px;border-radius:99px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;-webkit-backdrop-filter:blur(3px);backdrop-filter:blur(3px);}
 .estslidebar{display:flex;align-items:center;gap:8px;margin-top:14px;}
 .estnav{flex:none;width:40px;height:40px;border-radius:11px;border:1px solid #E4E2DE;background:#fff;color:#0A0A0A;font-size:1.3rem;line-height:1;cursor:pointer;transition:transform .18s,border-color .2s;}
 .estnav:hover:not(:disabled){border-color:#0A0A0A;}.estnav:active{transform:scale(.9);}.estnav:disabled{opacity:.35;cursor:default;}
@@ -603,6 +640,7 @@ const css = `
 .estbtn{border:1px solid #E4E2DE;background:#fff;color:#0A0A0A;border-radius:11px;padding:11px 15px;font-family:'Bricolage Grotesque',sans-serif;font-weight:700;font-size:14px;cursor:pointer;transition:transform .18s,border-color .2s,filter .15s;}
 .estbtn:hover:not(:disabled){border-color:#0A0A0A;}.estbtn:active:not(:disabled){transform:scale(.97);}.estbtn:disabled{opacity:.5;cursor:default;}
 .estbtn.ghost{background:transparent;}
+.estbtn.ghost.on{background:#0A0A0A;color:#F4F3F1;border-color:#0A0A0A;}
 .estbtn.solid{background:#0A0A0A;color:#F4F3F1;border-color:#0A0A0A;}
 .estbtn.solid:hover:not(:disabled){filter:brightness(1.15);}
 .estbtn.wide{width:100%;}
