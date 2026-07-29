@@ -65,10 +65,11 @@ function wrap(c, text, maxW) {
   });
   return out;
 }
+let _ovf = false; // sinaliza que algum texto não coube nem no tamanho mínimo
 function fit(c, text, family, weight, maxW, maxLines, start, min) {
   let size = start;
   while (size > min) { c.font = weight + " " + size + "px '" + family + "'"; const ls = wrap(c, text, maxW); if (ls.length <= maxLines) return { size, lines: ls }; size -= 2; }
-  c.font = weight + " " + min + "px '" + family + "'"; return { size: min, lines: wrap(c, text, maxW) };
+  c.font = weight + " " + min + "px '" + family + "'"; const ls = wrap(c, text, maxW); if (ls.length > maxLines) _ovf = true; return { size: min, lines: ls };
 }
 function cover(c, img, x, y, w, h) { const r = Math.max(w / img.width, h / img.height), iw = img.width * r, ih = img.height * r; c.save(); rr(c, x, y, w, h, 0); c.clip(); c.drawImage(img, x + (w - iw) / 2, y + (h - ih) / 2, iw, ih); c.restore(); }
 function grain(c, W, H, a) { c.save(); for (let i = 0; i < Math.floor(W * H / 2600); i++) { c.globalAlpha = Math.random() * a; c.fillStyle = Math.random() < 0.5 ? "#fff" : "#000"; c.fillRect(Math.random() * W, Math.random() * H, 2, 2); } c.restore(); }
@@ -105,6 +106,7 @@ function drawLista(c, itens, x, y, maxW, tipo, p, hMax) {
     return h;
   };
   while (size > 30 && alturaEm(size) > hMax) size -= 2;
+  if (alturaEm(size) > hMax) _ovf = true;
   const markW = tipo === "num" ? size * 1.7 : size * 1.15, lh = size * 1.32, gap = size * 0.8;
   let cy = y;
   itens.forEach((it, i) => {
@@ -128,6 +130,7 @@ const M = 96; // margem lateral fixa (canvas sempre 1080 de largura)
 function draw(c, W, H, sl, idx, total, handle, img) {
   let p = paleta(sl.tema);
   c.clearRect(0, 0, W, H);
+  _ovf = false;
   const comLogo = img && sl.imgUso === "logo" && sl.tpl !== "foto";
   const comFundo = img && (sl.imgUso === "fundo" || sl.tpl === "foto");
   if (comFundo) {
@@ -194,12 +197,14 @@ function draw(c, W, H, sl, idx, total, handle, img) {
     c.fillStyle = p.ink; c.font = "800 240px 'Bricolage Grotesque'"; c.fillText("“", M - 8, M + 200);
     let q = sl.titulo || "Sua frase de impacto aqui.";
     const kw = (sl.palavra || "").trim();
-    if (kw) { const re = new RegExp("\\s*" + kw.replace(/[.*+?^${}()|[\]\\]/g, "\\$&") + "\\s*", "i"); q = q.replace(re, "\n" + kw + "\n").replace(/\n\n+/g, "\n").replace(/^\n|\n$/g, ""); }
+    // pontuação logo após a palavra-chave vai JUNTO dela na barra (sem ponto solto)
+    if (kw) { const re = new RegExp("\\s*" + kw.replace(/[.*+?^${}()|[\]\\]/g, "\\$&") + "([.!?…,;:]*)\\s*", "i"); q = q.replace(re, "\n" + kw + "$1\n").replace(/\n\n+/g, "\n").replace(/^\n|\n$/g, ""); }
+    const semPont = (s) => s.replace(/[.!?…,;:]+$/, "").trim().toLowerCase();
     const ff = fit(c, q, "Bricolage Grotesque", "800", maxW, 6, 108, 56);
     const flh = ff.size * 1.12, block = ff.lines.length * flh, fy = Math.round(H * 0.44) - block / 2 + M;
     ff.lines.forEach((l, i) => {
       const yy = fy + i * flh;
-      if (kw && l.trim().toLowerCase() === kw.toLowerCase()) bar(c, l.trim(), M, yy, Math.round(ff.size * 0.86), p, maxW);
+      if (kw && semPont(l) === kw.toLowerCase()) bar(c, l.trim(), M, yy, Math.round(ff.size * 0.86), p, maxW);
       else { c.fillStyle = p.ink; c.font = "800 " + ff.size + "px 'Bricolage Grotesque'"; c.fillText(l, M, yy + ff.size * 0.82); }
     });
     const bs = 108;
@@ -264,6 +269,11 @@ export default function Estudio({ handle, onHandle, frases }) {
   const patch = (campo, val) => setSlides((ss) => ss.map((s, i) => (i === cur ? { ...s, [campo]: val } : s)));
   const sl = slides[cur];
 
+  const [legenda, setLegenda] = useState("");
+  const [copiado, setCopiado] = useState(false);
+  const [aviso, setAviso] = useState(null);
+  const ultimoAviso = useRef(null);
+
   // carrega fontes usadas no canvas
   useEffect(() => {
     if (!document.fonts?.load) { setFontsReady(true); return; }
@@ -273,6 +283,8 @@ export default function Estudio({ handle, onHandle, frases }) {
       document.fonts.load("500 60px 'Hanken Grotesk'"),
     ]).then(() => setFontsReady(true)).catch(() => setFontsReady(true));
   }, []);
+  // @ padrão da marca, pra já aparecer nos slides
+  useEffect(() => { if (!handle) onHandle("@eucleitonsampaio"); }, []); // eslint-disable-line
 
   // imagem carregada (ou dispara load + redraw)
   const imgDe = (dataURL) => {
@@ -289,7 +301,9 @@ export default function Estudio({ handle, onHandle, frases }) {
   const redraw = () => {
     const cv = cvRef.current; if (!cv) return;
     const f = FMT[fmt]; cv.width = f.w; cv.height = f.h;
-    draw(cv.getContext("2d"), f.w, f.h, slides[cur], cur, slides.length, handle, imgDe(slides[cur].imgData));
+    draw(cv.getContext("2d"), f.w, f.h, slides[cur], cur, slides.length, handle || "@eucleitonsampaio", imgDe(slides[cur].imgData));
+    const msg = _ovf ? "Esse texto ficou grande demais pra caber bonito — encurta um pouco." : null;
+    if (msg !== ultimoAviso.current) { ultimoAviso.current = msg; setAviso(msg); }
   };
   useEffect(redraw); // redesenha a cada render
 
@@ -332,7 +346,23 @@ export default function Estudio({ handle, onHandle, frases }) {
   const addSlide = () => { setSlides((ss) => { const n = [...ss]; n.splice(cur + 1, 0, novoSlide("conteudo")); return n; }); setCur((c) => c + 1); };
   const dupSlide = () => { setSlides((ss) => { const n = [...ss]; n.splice(cur + 1, 0, { ...ss[cur], id: ++_uid }); return n; }); setCur((c) => c + 1); };
   const delSlide = () => { if (slides.length <= 1) return; setSlides((ss) => ss.filter((_, i) => i !== cur)); setCur((c) => Math.max(0, c - 1)); };
+  const moveSlide = (dir) => { const j = cur + dir; if (j < 0 || j >= slides.length) return; setSlides((ss) => { const n = [...ss];[n[cur], n[j]] = [n[j], n[cur]]; return n; }); setCur(j); };
   const trocarFrase = () => { if (!frases?.length) return; fi.current = (fi.current + 1) % frases.length; patch("titulo", frases[fi.current]); };
+
+  // ── legenda pronta (a imagem é metade; a legenda gera comentário/salvamento) ──
+  const gerarLegenda = () => {
+    const capa = slides.find((s) => s.tpl === "capa") || slides[0];
+    const fin = slides.find((s) => s.tpl === "final");
+    const pontos = slides.filter((s) => s.tpl === "conteudo" && s.titulo.trim()).map((s) => "▸ " + s.titulo.trim());
+    const cta = (fin && (fin.corpo || fin.titulo)) || "Salva esse post pra aplicar e comenta o que achou.";
+    const tags = "#empreendedorismo #evolução #disciplina #negócios #empreender #mentalidade #constância #bastidores #foco #empreendedorismodigital";
+    return [capa?.titulo?.trim(), capa?.subtitulo?.trim(), "", pontos.join("\n"), pontos.length ? "" : null, cta, "", "Bora construir.", "", tags].filter((x) => x !== null && x !== undefined).join("\n").replace(/\n{3,}/g, "\n\n").trim();
+  };
+  const copiarLegenda = async () => {
+    const txt = legenda || gerarLegenda();
+    try { await navigator.clipboard.writeText(txt); setCopiado(true); setTimeout(() => setCopiado(false), 1600); }
+    catch { setLegenda(txt); }
+  };
 
   // ── salvar (celular: Web Share → Fotos/Instagram; desktop: download) ──
   const nome = (i) => "cleiton-" + fmt + "-" + String(i + 1).padStart(2, "0") + ".png";
@@ -347,7 +377,7 @@ export default function Estudio({ handle, onHandle, frases }) {
     setSalvando(true);
     const f = FMT[fmt], exp = document.createElement("canvas"); exp.width = f.w; exp.height = f.h; const ec = exp.getContext("2d");
     const files = [];
-    for (let i = 0; i < slides.length; i++) { draw(ec, f.w, f.h, slides[i], i, slides.length, handle, imgDe(slides[i].imgData)); files.push(await toFile(exp, nome(i))); }
+    for (let i = 0; i < slides.length; i++) { draw(ec, f.w, f.h, slides[i], i, slides.length, handle || "@eucleitonsampaio", imgDe(slides[i].imgData)); files.push(await toFile(exp, nome(i))); }
     await salvar(files, "Carrossel"); setSalvando(false);
   };
 
@@ -377,15 +407,18 @@ export default function Estudio({ handle, onHandle, frases }) {
         <div className="estslidebar">
           <button className="estnav" disabled={cur === 0} onClick={() => setCur((c) => c - 1)} aria-label="Anterior">‹</button>
           <div className="estthumbs">
-            {slides.map((s, i) => <Thumb key={s.id} s={s} i={i} total={slides.length} handle={handle} fmt={fmt} on={i === cur} img={imgDe(s.imgData)} onClick={() => setCur(i)} />)}
+            {slides.map((s, i) => <Thumb key={s.id} s={s} i={i} total={slides.length} handle={handle || "@eucleitonsampaio"} fmt={fmt} on={i === cur} img={imgDe(s.imgData)} onClick={() => setCur(i)} />)}
           </div>
           <button className="estnav" disabled={cur === slides.length - 1} onClick={() => setCur((c) => c + 1)} aria-label="Próximo">›</button>
         </div>
+        {aviso && <p className="estaviso">⚠ {aviso}</p>}
         <div className="estacts">
+          <button className="estbtn ghost" onClick={() => moveSlide(-1)} disabled={cur === 0} title="Mover pra esquerda">◀</button>
+          <button className="estbtn ghost" onClick={() => moveSlide(1)} disabled={cur === slides.length - 1} title="Mover pra direita">▶</button>
           <button className="estbtn ghost" onClick={addSlide}>+ Slide</button>
           <button className="estbtn ghost" onClick={dupSlide}>Duplicar</button>
           <button className="estbtn ghost" onClick={delSlide} disabled={slides.length <= 1}>Apagar</button>
-          {(sl.textPos?.x || sl.textPos?.y) ? <button className="estbtn ghost" onClick={resetTexto}>Centralizar texto</button> : null}
+          {(sl.textPos?.x || sl.textPos?.y) ? <button className="estbtn ghost" onClick={resetTexto}>Centralizar</button> : null}
           <span className="estcount">{cur + 1} / {slides.length}</span>
         </div>
       </div>
@@ -450,6 +483,16 @@ export default function Estudio({ handle, onHandle, frases }) {
           <button className="estbtn ghost wide" disabled={salvando} onClick={salvarTodos}>Salvar o carrossel todo</button>
           <p className="esthint">No celular abre a folha de compartilhar: toque em <b>Salvar imagem</b> pras Fotos, ou mande direto pro Instagram.</p>
         </div>
+
+        <details className="estlegenda">
+          <summary>Legenda pronta pra colar</summary>
+          <p className="esthint" style={{ margin: "8px 0 10px" }}>A imagem para o dedo; a <b>legenda</b> é o que gera comentário e salvamento. Gera daqui, ajusta e cola no Instagram.</p>
+          <textarea className="estarea" value={legenda} onChange={(e) => setLegenda(e.target.value)} rows={8} placeholder="Clique em “Gerar da timeline” que eu monto a legenda a partir dos seus slides…" />
+          <div className="estlegacts">
+            <button className="estbtn ghost" onClick={() => setLegenda(gerarLegenda())}>Gerar da timeline ↻</button>
+            <button className="estbtn solid" onClick={copiarLegenda}>{copiado ? "Copiado ✓" : "Copiar legenda"}</button>
+          </div>
+        </details>
       </div>
     </section>
   );
@@ -519,6 +562,14 @@ const css = `
 .esthint{color:#6E6E73;font-size:12px;line-height:1.45;margin:0;}
 .esthint b{color:#0A0A0A;}
 .esterro{background:#ECEAE6;border:1px solid #D8D6D0;border-radius:11px;padding:11px 13px;font-size:13px;color:#0A0A0A;font-weight:600;margin:0;}
+.estaviso{background:#F4F3F1;border:1px solid #D8D6D0;border-left:3px solid #0A0A0A;border-radius:10px;padding:9px 12px;font-size:12.5px;line-height:1.4;color:#0A0A0A;font-weight:600;margin:12px 0 0;}
+.estlegenda{border:1px solid #E4E2DE;border-radius:14px;padding:4px 16px 16px;background:#F4F3F1;}
+.estlegenda>summary{list-style:none;cursor:pointer;padding:14px 0 4px;font-family:'Bricolage Grotesque',sans-serif;font-weight:700;font-size:14.5px;color:#0A0A0A;}
+.estlegenda>summary::-webkit-details-marker{display:none;}
+.estlegenda>summary::after{content:"+";float:right;font-weight:700;color:#6E6E73;font-size:1.2rem;line-height:1;}
+.estlegenda[open]>summary::after{content:"\\2013";}
+.estlegacts{display:flex;gap:10px;margin-top:10px;}
+.estlegacts .estbtn{flex:1;}
 @media(min-width:820px){
   .eststage,.estpanel{max-width:640px;margin-left:auto;margin-right:auto;}
 }
