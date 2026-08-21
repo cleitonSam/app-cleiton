@@ -410,6 +410,8 @@ export default function Estudio({ handle, onHandle, frases, iaAtiva }) {
 
   const patch = (campo, val) => setSlides((ss) => ss.map((s, i) => (i === cur ? { ...s, [campo]: val } : s)));
   const sl = slides[cur];
+  const nomeTpl = { capa: "Capa", conteudo: "Conteúdo", foto: "Foto", frase: "Frase", mito: "Mito × Verdade", final: "Final", interacao: "Interação" };
+  const canvasLabel = `Prévia do slide ${cur + 1} de ${slides.length} — modelo ${nomeTpl[sl.tpl] || sl.tpl}, formato ${fmt}${sl.titulo ? ": " + sl.titulo : ""}`;
 
   const [legenda, setLegenda] = useState("");
   const [copiado, setCopiado] = useState(false);
@@ -426,7 +428,7 @@ export default function Estudio({ handle, onHandle, frases, iaAtiva }) {
     ]).then(() => setFontsReady(true)).catch(() => setFontsReady(true));
   }, []);
   // @ padrão da marca, pra já aparecer nos slides
-  useEffect(() => { if (!handle) onHandle("@eucleitonsampaio"); }, []); // eslint-disable-line
+  useEffect(() => { if (!handle) onHandle("@eucleitonsampaio"); }, []); // eslint-disable-line react-hooks/exhaustive-deps
   // salva o rascunho a cada mudança (se estourar a cota, salva sem as imagens)
   useEffect(() => {
     const gravar = (p) => { try { localStorage.setItem(STORE, JSON.stringify(p)); return true; } catch { return false; } };
@@ -555,7 +557,7 @@ export default function Estudio({ handle, onHandle, frases, iaAtiva }) {
         <div className="estcvwrap">
           <div className="estcvbox">
             <canvas
-              ref={cvRef} className="estcv"
+              ref={cvRef} className="estcv" role="img" aria-label={canvasLabel}
               onMouseDown={onDown} onMouseMove={onMove} onMouseUp={onUp} onMouseLeave={onUp}
               onTouchStart={onDown} onTouchMove={onMove} onTouchEnd={onUp}
               style={{ cursor: "grab", touchAction: "none" }}
@@ -573,9 +575,9 @@ export default function Estudio({ handle, onHandle, frases, iaAtiva }) {
         </div>
         {aviso && <p className="estaviso">⚠ {aviso}</p>}
         <div className="estacts">
-          <button className={"estbtn ghost" + (regua ? " on" : "")} onClick={() => setRegua((v) => !v)} title="Mostra a área segura do Instagram — não sai na foto">⊞ Régua</button>
-          <button className="estbtn ghost" onClick={() => moveSlide(-1)} disabled={cur === 0} title="Mover pra esquerda">◀</button>
-          <button className="estbtn ghost" onClick={() => moveSlide(1)} disabled={cur === slides.length - 1} title="Mover pra direita">▶</button>
+          <button className={"estbtn ghost" + (regua ? " on" : "")} aria-pressed={regua} onClick={() => setRegua((v) => !v)} title="Mostra a área segura do Instagram — não sai na foto">⊞ Régua</button>
+          <button className="estbtn ghost" onClick={() => moveSlide(-1)} disabled={cur === 0} aria-label="Mover slide para a esquerda" title="Mover pra esquerda">◀</button>
+          <button className="estbtn ghost" onClick={() => moveSlide(1)} disabled={cur === slides.length - 1} aria-label="Mover slide para a direita" title="Mover pra direita">▶</button>
           <button className="estbtn ghost" onClick={addSlide}>+ Slide</button>
           <button className="estbtn ghost" onClick={dupSlide}>Duplicar</button>
           <button className="estbtn ghost" onClick={delSlide} disabled={slides.length <= 1}>Apagar</button>
@@ -715,7 +717,7 @@ function Thumb({ s, i, total, handle, fmt, on, img, onClick }) {
     c.width = 240; c.height = Math.round(240 * f.h / f.w);
     draw(c.getContext("2d"), c.width, c.height, s, i, total, handle, img);
   });
-  return <button className={"estthumb" + (on ? " on" : "")} onClick={onClick}><canvas ref={ref} /></button>;
+  return <button className={"estthumb" + (on ? " on" : "")} onClick={onClick} aria-label={"Ir para o slide " + (i + 1)} aria-current={on ? "true" : undefined}><canvas ref={ref} /></button>;
 }
 
 const css = `
@@ -762,6 +764,8 @@ const css = `
 .estseg-b:active{transform:scale(.96);}
 .estinput,.estarea{width:100%;border:1px solid #E4E2DE;border-radius:11px;background:#F4F3F1;color:#0A0A0A;font-family:'Hanken Grotesk',sans-serif;font-size:16px;padding:11px 13px;outline:none;transition:border-color .2s;}
 .estinput:focus,.estarea:focus{border-color:#0A0A0A;}
+/* foco de teclado visível (acessibilidade) — anel fora da borda, aparece em qualquer botão */
+.est button:focus-visible,.est label.estupload:focus-within,.estinput:focus-visible,.estarea:focus-visible,.estlink:focus-visible{outline:2px solid #0A0A0A;outline-offset:2px;border-radius:8px;}
 .estarea{resize:vertical;min-height:52px;line-height:1.4;}
 .estlink{background:none;border:none;color:#6E6E73;text-decoration:underline;text-underline-offset:2px;cursor:pointer;font-size:13px;font-family:'Hanken Grotesk',sans-serif;padding:2px 0;text-align:left;justify-self:start;}
 .estlink:hover{color:#0A0A0A;}
