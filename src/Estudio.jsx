@@ -21,6 +21,7 @@ let _uid = 0;
 const novoSlide = (tpl) => ({
   id: ++_uid, tpl: tpl || "capa", tema: "preto", titulo: "", subtitulo: "", corpo: "", palavra: "", gancho: "", lista: "texto",
   escala: 1, destaque: false,
+  inter: "enquete", opcaoA: "", opcaoB: "", pergunta: "", // stories de interação (enquete / caixinha)
   textPos: { x: 0, y: 0 }, imgData: null, imgUso: "logo", logoPos: { x: 0.82, y: 0.14 }, logoScale: 0.2,
 });
 // esqueleto de carrossel profissional (8 slides) — a "receita" da marca
@@ -38,6 +39,26 @@ const slidesPadrao = () => [
   { ...novoSlide("capa"), titulo: "O que ninguém te conta sobre começar do zero", palavra: "em tempo real", subtitulo: "a parte que os gurus escondem" },
   { ...novoSlide("conteudo"), tema: "papel", titulo: "Disciplina > motivação", corpo: "Motivação é o gás do primeiro dia. Disciplina é aparecer no dia 40, quando ninguém tá vendo e a vontade sumiu. É ela que constrói.", gancho: "e tem um jeito de não depender dela →" },
   { ...novoSlide("final"), titulo: "Salva e bora construir." },
+];
+// pacote de 15 stories de interação (enquete / caixinha) — pronto pra trocar a foto e ajustar
+const iEnq = (tema, corpo, titulo, a, b) => ({ ...novoSlide("interacao"), tema, inter: "enquete", corpo, titulo, opcaoA: a, opcaoB: b });
+const iCax = (tema, corpo, titulo, pergunta) => ({ ...novoSlide("interacao"), tema, inter: "caixinha", corpo, titulo, pergunta });
+const pacoteInteracao = () => [
+  iEnq("preto", "Hoje eu apaguei uma coisa que já estava quase pronta.\n\nNão porque estava ruim.\n\nSó percebi que eu tava tentando salvar uma ideia que já não fazia mais sentido.", "", "INSISTO ATÉ O FIM", "RECOMEÇO SEM DÓ"),
+  iEnq("papel", "Uma disputa importante:", "O que irrita mais?", "REUNIÃO QUE ERA MSG", "MSG QUE ERA REUNIÃO"),
+  iCax("preto", "Todo mundo tem uma coisa que os outros sempre pedem ajuda.\n\nA minha normalmente envolve descobrir por que alguma coisa não tá funcionando 😂\n\nE a sua?", "", "Todo mundo me chama quando…"),
+  iEnq("preto", "Demorei pra separar duas coisas:\n\nestar ocupado\ne\nestar produzindo.\n\nTem dia que você não para e, mesmo assim, não sai do lugar.", "", "ACONTECE DIRETO", "RARO COMIGO"),
+  iCax("preto", "Quero descobrir coisa boa hoje:\n\nqual aplicativo você usa TODO DIA e quase ninguém fala?", "", "Me indica um 👇"),
+  iEnq("preto", "Tenho uma coisa quase pronta faz tempo.\n\nO problema?\n\nDepois que fica boa, começo a inventar motivo pra deixar “melhor”.\n\nMais alguém sofre disso? 😂", "", "SIM", "EU ENTREGO LOGO"),
+  iEnq("papel", "Se você tivesse que escolher UM:\n\n(pra mim, nem sempre é a mesma coisa.)", "", "MUITO TÉCNICO", "SABE RESOLVER"),
+  iEnq("preto", "Antes de comprar algo, eu tento responder uma pergunta.\n\nConfesso que ela já matou algumas compras 😂", "Isso resolve um problema ou só parece legal?", "EU PRECISAVA DISSO", "EU QUERIA ISSO"),
+  iEnq("papel", "Tem uma frase que me dá vontade de fazer outra pergunta:", "“Sempre foi feito assim.”\nTá… mas por quê?", "TAMBÉM QUESTIONO", "DEIXA COMO ESTÁ"),
+  iCax("preto", "Pergunta aleatória, mas quero boas recomendações:\n\nqual a melhor coisa que você comprou por menos de R$100?\n\nPode ser qualquer coisa.", "", "Foi isso aqui…"),
+  iCax("preto", "Se eu pudesse chamar alguém agora e falar:\n\n“me explica isso sem enrolação…”\n\nEu já teria uma lista 😂\n\nE você?", "", "O que você quer aprender?"),
+  iEnq("preto", "Tem uma parte dos projetos que quase nunca aparece aqui:\n\nas coisas dando errado.\n\nE, sendo sincero, às vezes é a parte mais interessante.", "", "MOSTRA OS ERROS", "MOSTRA O RESULTADO"),
+  iEnq("preto", "Uma dúvida pra eu não postar coisa que ninguém quer ver:\n\no que você prefere acompanhar aqui?", "", "O QUE ESTOU CRIANDO", "COMO EU RESOLVO"),
+  iCax("papel", "Vamos fazer diferente.\n\nMe manda um problema real que você tá tentando resolver hoje.\n\nTrabalho, negócio, tecnologia… tanto faz.\n\nNão prometo solução mágica.", "Mas posso dizer por onde eu começaria.", "Manda o problema 👇"),
+  iEnq("preto", "Tive uma ideia.\n\n1x por semana eu pego um problema que alguém mandar aqui e mostro meu raciocínio pra resolver.\n\nSem “5 passos pro sucesso”. Problema real → raciocínio real.", "Faria sentido?", "FAZ ISSO", "QUERO PARTICIPAR"),
 ];
 // rascunho no aparelho: não perde o trabalho ao trocar de aba/fechar
 const STORE = "cs-estudio-v1";
@@ -70,6 +91,44 @@ function badge(c, x, y, s) {
   g.addColorStop(0, "#2C2C30"); g.addColorStop(1, "#050506");
   c.fillStyle = g; rr(c, x, y, s, s, s * 0.226); c.fill();
   chevron(c, x, y, s, "#FFFFFF");
+}
+// enquete estilo Instagram: barra arredondada partida em duas opções (auto-fit, até 2 linhas)
+function desenharEnquete(c, x, y, w, a, b, p) {
+  const half = w / 2 - 44;
+  const acha = (txt) => {
+    let s = 42; c.font = "700 " + s + "px 'Bricolage Grotesque'";
+    while (s > 20) { if (wrap(c, (txt || "").toUpperCase(), half).length <= 2) break; s -= 2; c.font = "700 " + s + "px 'Bricolage Grotesque'"; }
+    return s;
+  };
+  const s = Math.min(acha(a), acha(b));
+  c.font = "700 " + s + "px 'Bricolage Grotesque'";
+  const lA = wrap(c, (a || "").toUpperCase(), half), lB = wrap(c, (b || "").toUpperCase(), half);
+  const lh = s * 1.08, nl = Math.max(lA.length, lB.length), h = Math.max(148, nl * lh + 64), mid = x + w / 2;
+  c.fillStyle = p.barbg; rr(c, x, y, w, h, 30); c.fill();
+  c.save(); c.globalAlpha = 0.16; c.strokeStyle = p.barink; c.lineWidth = 2;
+  c.beginPath(); c.moveTo(mid, y + 20); c.lineTo(mid, y + h - 20); c.stroke(); c.restore();
+  c.fillStyle = p.barink; c.font = "700 " + s + "px 'Bricolage Grotesque'"; c.textAlign = "center"; c.textBaseline = "middle";
+  const put = (ls, cx) => { const sy = y + h / 2 - (ls.length - 1) * lh / 2; ls.forEach((l, i) => c.fillText(l, cx, sy + i * lh)); };
+  put(lA, x + w / 4); put(lB, x + 3 * w / 4);
+  c.textAlign = "left"; c.textBaseline = "alphabetic";
+  return h;
+}
+// caixinha de perguntas estilo Instagram: card com o prompt + campo "Responder…"
+function desenharCaixinha(c, x, y, w, prompt, p) {
+  const padX = 42, padY = 34, inner = w - padX * 2;
+  let s = 46; c.font = "700 " + s + "px 'Bricolage Grotesque'";
+  let lines = wrap(c, prompt, inner);
+  while (s > 26 && lines.length > 3) { s -= 2; c.font = "700 " + s + "px 'Bricolage Grotesque'"; lines = wrap(c, prompt, inner); }
+  const lh = s * 1.16, promptH = lines.length * lh, respH = 62;
+  const h = padY + promptH + 24 + respH + padY;
+  c.fillStyle = p.barbg; rr(c, x, y, w, h, 28); c.fill();
+  c.fillStyle = p.barink; c.font = "700 " + s + "px 'Bricolage Grotesque'"; c.textAlign = "left"; c.textBaseline = "alphabetic";
+  lines.forEach((l, i) => c.fillText(l, x + padX, y + padY + i * lh + s * 0.82));
+  const ry = y + padY + promptH + 24;
+  c.save(); c.globalAlpha = 0.45; c.strokeStyle = p.barink; c.lineWidth = 2; rr(c, x + padX, ry, inner, respH, respH / 2); c.stroke(); c.restore();
+  c.save(); c.globalAlpha = 0.55; c.fillStyle = p.barink; c.font = "500 30px 'Hanken Grotesk'"; c.textBaseline = "middle";
+  c.fillText("Responder…", x + padX + 26, ry + respH / 2 + 2); c.restore(); c.textBaseline = "alphabetic";
+  return h;
 }
 // barra invertida com auto-fit: nunca deixa o texto estourar a largura (maxW)
 function bar(c, text, x, y, size, pal, maxW) {
@@ -298,6 +357,25 @@ function draw(c, W, H, sl, idx, total, handle, img) {
     c.fillStyle = p.ink; c.font = "800 " + vf.size + "px 'Bricolage Grotesque'";
     const vy = Math.round(H * 0.66), vlh = vf.size * 1.08;
     vf.lines.forEach((l, i) => c.fillText(l, L, vy + i * vlh + vf.size));
+  } else if (sl.tpl === "interacao") {
+    // story de interação: narração (corpo) + pergunta em destaque (titulo) + sticker
+    let y = T + 24;
+    if (sl.corpo) {
+      const cf = fit(c, sl.corpo, "Hanken Grotesk", "450", maxW, 9, 44, 30);
+      c.fillStyle = p.ink; c.font = "450 " + cf.size + "px 'Hanken Grotesk'"; const clh = cf.size * 1.5;
+      cf.lines.forEach((l, i) => c.fillText(l, L, y + i * clh + cf.size));
+      y += cf.lines.length * clh + 44;
+    }
+    if (sl.titulo) {
+      const qf = fit(c, sl.titulo, "Bricolage Grotesque", "800", maxW, 3, 60, 40);
+      c.fillStyle = p.ink; c.font = "800 " + qf.size + "px 'Bricolage Grotesque'"; const qlh = qf.size * 1.12;
+      qf.lines.forEach((l, i) => c.fillText(l, L, y + i * qlh + qf.size));
+      y += qf.lines.length * qlh + 40;
+    }
+    // sticker abaixo do texto, mas sempre dentro da área segura de baixo (respiro pro handle)
+    const stY = Math.max(Math.min(Math.max(y + 8, Math.round(H * 0.56)), H - B - 200), y + 8);
+    if (sl.inter === "caixinha") desenharCaixinha(c, L, stY, maxW, sl.pergunta || "Escreve o convite aqui…", p);
+    else desenharEnquete(c, L, stY, maxW, sl.opcaoA || "OPÇÃO A", sl.opcaoB || "OPÇÃO B", p);
   }
   c.restore();
 
@@ -470,6 +548,7 @@ export default function Estudio({ handle, onHandle, frases, iaAtiva }) {
         <h2 className="esth">Criar post</h2>
         <p className="estsub">Escreve o texto, sobe foto ou logo, <b>arrasta pra posicionar</b>. Sai pronto na sua identidade — salva direto no celular.</p>
         <button className="estbtn solid estnovo" onClick={() => { setSlides(modeloCarrossel()); setCur(0); }}>✦ Montar um carrossel do zero (8 slides)</button>
+        <button className="estbtn ghost estnovo" onClick={() => { setSlides(pacoteInteracao()); setCur(0); setFmt("story"); }}>◇ Pacote: 15 stories de interação</button>
       </div>
 
       <div className="eststage">
@@ -510,7 +589,7 @@ export default function Estudio({ handle, onHandle, frases, iaAtiva }) {
           <div className="estseg">{seg([{ v: "carrossel", t: "Carrossel" }, { v: "quadrado", t: "Quadrado" }, { v: "story", t: "Story" }], fmt, setFmt)}</div>
         </Field>
         <Field label="Modelo do slide">
-          <div className="estseg">{seg([{ v: "capa", t: "Capa" }, { v: "conteudo", t: "Conteúdo" }, { v: "foto", t: "Foto" }, { v: "frase", t: "Frase" }, { v: "mito", t: "Mito×V" }, { v: "final", t: "Final" }], sl.tpl, (v) => patch("tpl", v))}</div>
+          <div className="estseg">{seg([{ v: "capa", t: "Capa" }, { v: "conteudo", t: "Conteúdo" }, { v: "foto", t: "Foto" }, { v: "frase", t: "Frase" }, { v: "mito", t: "Mito×V" }, { v: "final", t: "Final" }, { v: "interacao", t: "Interação" }], sl.tpl, (v) => patch("tpl", v))}</div>
         </Field>
         <div className="estdupla">
           <Field label="Fundo">
@@ -520,9 +599,9 @@ export default function Estudio({ handle, onHandle, frases, iaAtiva }) {
             <div className="estseg">{seg([{ v: 0.85, t: "Menor" }, { v: 1, t: "Médio" }, { v: 1.2, t: "Maior" }, { v: 1.45, t: "Máx" }], sl.escala || 1, (v) => patch("escala", v))}</div>
           </Field>
         </div>
-        <Field label={{ capa: "Gancho (headline)", conteudo: "Título do slide", foto: "Frase na foto", frase: "Frase", mito: "O mito (o que dizem)", final: "Frase de fecho" }[sl.tpl] || "Título"}>
+        <Field label={{ capa: "Gancho (headline)", conteudo: "Título do slide", foto: "Frase na foto", frase: "Frase", mito: "O mito (o que dizem)", final: "Frase de fecho", interacao: "Pergunta em destaque (opcional)" }[sl.tpl] || "Título"}>
           <div className="estlinha">
-            <textarea className="estarea" value={sl.titulo} onChange={(e) => patch("titulo", e.target.value)} placeholder={sl.tpl === "capa" ? "5 a 8 palavras que param o dedo" : "Escreve aqui…"} rows={2} />
+            <textarea className="estarea" value={sl.titulo} onChange={(e) => patch("titulo", e.target.value)} placeholder={sl.tpl === "capa" ? "5 a 8 palavras que param o dedo" : sl.tpl === "interacao" ? "uma linha forte (ex.: O que irrita mais?)" : "Escreve aqui…"} rows={2} />
           </div>
           {frases?.length && (sl.tpl === "frase" || sl.tpl === "capa") ? <button className="estlink" onClick={trocarFrase}>trocar por uma frase pronta ↻</button> : null}
         </Field>
@@ -539,13 +618,31 @@ export default function Estudio({ handle, onHandle, frases, iaAtiva }) {
             <div className="estseg">{seg([{ v: "texto", t: "Parágrafo" }, { v: "bullet", t: "Lista •" }, { v: "num", t: "Números 01" }], sl.lista, (v) => patch("lista", v))}</div>
           </Field>
         )}
-        {(sl.tpl === "conteudo" || sl.tpl === "final" || sl.tpl === "mito") && (
-          <Field label={sl.tpl === "final" ? "Instrução (o que fazer)" : sl.tpl === "mito" ? "A verdade (o que ninguém fala)" : (sl.lista === "texto" ? "Texto do slide (uma ideia só)" : "Itens da lista (uma linha por item)")}><textarea className="estarea" value={sl.corpo} onChange={(e) => patch("corpo", e.target.value)} placeholder={sl.tpl === "final" ? "Comenta X que te mando no direct…" : sl.tpl === "mito" ? "A verdade que muda o jogo…" : (sl.lista === "texto" ? "O miolo do slide…" : "Primeiro item\nSegundo item\nTerceiro item")} rows={sl.lista === "texto" ? 3 : 4} /></Field>
+        {(sl.tpl === "conteudo" || sl.tpl === "final" || sl.tpl === "mito" || sl.tpl === "interacao") && (
+          <Field label={sl.tpl === "final" ? "Instrução (o que fazer)" : sl.tpl === "mito" ? "A verdade (o que ninguém fala)" : sl.tpl === "interacao" ? "Narração (o texto de cima)" : (sl.lista === "texto" ? "Texto do slide (uma ideia só)" : "Itens da lista (uma linha por item)")}><textarea className="estarea" value={sl.corpo} onChange={(e) => patch("corpo", e.target.value)} placeholder={sl.tpl === "final" ? "Comenta X que te mando no direct…" : sl.tpl === "mito" ? "A verdade que muda o jogo…" : sl.tpl === "interacao" ? "Conta a história em linhas curtas…" : (sl.lista === "texto" ? "O miolo do slide…" : "Primeiro item\nSegundo item\nTerceiro item")} rows={sl.tpl === "interacao" ? 5 : (sl.lista === "texto" ? 3 : 4)} /></Field>
+        )}
+        {sl.tpl === "interacao" && (
+          <>
+            <Field label="Tipo de interação">
+              <div className="estseg">{seg([{ v: "enquete", t: "Enquete (2 opções)" }, { v: "caixinha", t: "Caixinha (pergunta)" }], sl.inter || "enquete", (v) => patch("inter", v))}</div>
+            </Field>
+            {(sl.inter || "enquete") === "caixinha" ? (
+              <Field label="Convite da caixinha"><input className="estinput" value={sl.pergunta} onChange={(e) => patch("pergunta", e.target.value)} placeholder="Ex.: Me indica um 👇" /></Field>
+            ) : (
+              <div className="estdupla">
+                <Field label="Opção da esquerda"><input className="estinput" value={sl.opcaoA} onChange={(e) => patch("opcaoA", e.target.value)} placeholder="Ex.: SIM" /></Field>
+                <Field label="Opção da direita"><input className="estinput" value={sl.opcaoB} onChange={(e) => patch("opcaoB", e.target.value)} placeholder="Ex.: EU ENTREGO LOGO" /></Field>
+              </div>
+            )}
+            <p className="esthint">Posta assim (as pessoas respondem no direct) ou, no Instagram, cola a <b>enquete/caixinha de verdade</b> por cima desta pra contar votos.</p>
+          </>
         )}
         {sl.tpl === "conteudo" && (
           <Field label="Gancho de continuidade (puxa o próximo)"><input className="estinput" value={sl.gancho} onChange={(e) => patch("gancho", e.target.value)} placeholder="…e o pior nem é esse →" /></Field>
         )}
-        <Field label={sl.tpl === "final" ? "Verbo do botão (CTA)" : "Palavra-chave (barra invertida)"}><input className="estinput" value={sl.palavra} onChange={(e) => patch("palavra", e.target.value)} placeholder={sl.tpl === "final" ? "Ex.: comenta QUERO" : "Ex.: em tempo real"} /></Field>
+        {sl.tpl !== "interacao" && sl.tpl !== "mito" && (
+          <Field label={sl.tpl === "final" ? "Verbo do botão (CTA)" : "Palavra-chave (barra invertida)"}><input className="estinput" value={sl.palavra} onChange={(e) => patch("palavra", e.target.value)} placeholder={sl.tpl === "final" ? "Ex.: comenta QUERO" : "Ex.: em tempo real"} /></Field>
+        )}
 
         <Field label="Imagem / logo">
           <label className="estupload">
