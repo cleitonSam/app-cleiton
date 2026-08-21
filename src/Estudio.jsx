@@ -184,7 +184,7 @@ function itensDe(texto) {
 }
 function drawLista(c, itens, x, y, maxW, tipo, p, hMax) {
   // auto-fit: acha o maior tamanho em que a lista inteira cabe na altura disponível
-  let size = 44;
+  let size = Math.round(44 * _escala); // respeita o "Tamanho da letra" do slide
   const alturaEm = (sz) => {
     const markW = tipo === "num" ? sz * 1.7 : sz * 1.15;
     let h = 0; const lh = sz * 1.32, gap = sz * 0.8;
@@ -192,7 +192,7 @@ function drawLista(c, itens, x, y, maxW, tipo, p, hMax) {
     itens.forEach((it) => { h += wrap(c, it, maxW - markW).length * lh + gap; });
     return h;
   };
-  while (size > 30 && alturaEm(size) > hMax) size -= 2;
+  while (size > Math.round(30 * _escala) && alturaEm(size) > hMax) size -= 2;
   if (alturaEm(size) > hMax) _ovf = true;
   const markW = tipo === "num" ? size * 1.7 : size * 1.15, lh = size * 1.32, gap = size * 0.8;
   let cy = y;
@@ -249,7 +249,7 @@ function draw(c, W, H, sl, idx, total, handle, img) {
   c.save(); c.translate(OX, OY);
 
   if (sl.tpl === "capa") {
-    if (sl.palavra) bar(c, sl.palavra, L, Math.max(Math.round(H * 0.14), T), 40, p, maxW);
+    if (sl.palavra) bar(c, sl.palavra, L, Math.max(Math.round(H * 0.14), T), Math.round(40 * _escala), p, maxW);
     const t = (sl.titulo || "O SEU GANCHO AQUI").toUpperCase();
     const f = fit(c, t, "Anton", "400", maxW, 4, 104, 68);
     const hy = Math.round(H * 0.33), lh = f.size * 1.04;
@@ -276,7 +276,7 @@ function draw(c, W, H, sl, idx, total, handle, img) {
       tf.lines.forEach((l, i) => c.fillText(l, L, ty + i * tlh));
       by = ty + tf.lines.length * tlh + 44;
     }
-    if (sl.palavra) { const bb = bar(c, sl.palavra, L, by, 40, p, maxW); by += bb.h + 40; }
+    if (sl.palavra) { const bb = bar(c, sl.palavra, L, by, Math.round(40 * _escala), p, maxW); by += bb.h + 40; }
     if (sl.lista !== "texto" && itensDe(sl.corpo).length) {
       const hMax = Math.min(Math.round(H * (sl.gancho ? 0.82 : 0.9)), H - B) - by;
       drawLista(c, itensDe(sl.corpo), L, by, maxW, sl.lista, p, hMax);
@@ -296,7 +296,7 @@ function draw(c, W, H, sl, idx, total, handle, img) {
     const t2 = sl.titulo || "Sua frase na foto";
     const f2 = fit(c, t2, "Bricolage Grotesque", "800", maxW, 4, 72, 52);
     const lh2 = f2.size * 1.04, y0 = Math.round(H * 0.7) - (sl.palavra ? 90 : 0);
-    if (sl.palavra) bar(c, sl.palavra, L, y0 - 24, 40, p, maxW);
+    if (sl.palavra) bar(c, sl.palavra, L, y0 - 24, Math.round(40 * _escala), p, maxW);
     c.fillStyle = p.ink; c.font = "800 " + f2.size + "px 'Bricolage Grotesque'";
     f2.lines.forEach((l, i) => c.fillText(l, L, y0 + 80 + i * lh2 + f2.size));
     if (!img) { c.fillStyle = p.mut; c.font = "600 40px 'Hanken Grotesk'"; c.textAlign = "center"; c.fillText("↑ suba uma imagem no painel", W / 2 - OX, H * 0.5 - OY); c.textAlign = "left"; }
@@ -327,7 +327,7 @@ function draw(c, W, H, sl, idx, total, handle, img) {
     lf.lines.forEach((l, i) => c.fillText(l, L, ly + i * llh + lf.size));
     // BOTÃO CTA — pílula sólida, reservada SÓ pra este slide
     const verbo = (sl.palavra || "comenta QUERO").toUpperCase();
-    let vb = 56; c.font = "400 " + vb + "px 'Anton'";
+    let vb = Math.round(56 * _escala); c.font = "400 " + vb + "px 'Anton'";
     while (c.measureText(verbo).width + 88 > maxW && vb > 34) { vb -= 2; c.font = "400 " + vb + "px 'Anton'"; }
     const padX = 44, padY = 30, tw = c.measureText(verbo).width;
     const btnY = ly + lf.lines.length * llh + 60, btnH = vb + padY * 2, btnW = tw + padX * 2;
@@ -341,7 +341,7 @@ function draw(c, W, H, sl, idx, total, handle, img) {
     inf.lines.forEach((l, i) => c.fillText(l, L, iy + i * ilh + inf.size));
   } else if (sl.tpl === "mito") {
     // MITO (em cima, riscado, cinza) × VERDADE (embaixo, forte)
-    c.fillStyle = p.mut; c.font = "700 30px 'Bricolage Grotesque'"; c.fillText("MITO", L, Math.round(H * 0.135));
+    c.fillStyle = p.mut; c.font = "700 " + Math.round(30 * _escala) + "px 'Bricolage Grotesque'"; c.fillText("MITO", L, Math.round(H * 0.135));
     const mf = fit(c, sl.titulo || "O que todo mundo repete", "Bricolage Grotesque", "700", maxW, 4, 60, 44);
     c.fillStyle = p.mut; c.font = "700 " + mf.size + "px 'Bricolage Grotesque'";
     const my = Math.round(H * 0.185), mlh = mf.size * 1.1;
@@ -352,7 +352,7 @@ function draw(c, W, H, sl, idx, total, handle, img) {
     });
     const meio = Math.round(H * 0.5);
     c.save(); c.globalAlpha = 0.28; c.strokeStyle = p.ink; c.lineWidth = 2; c.beginPath(); c.moveTo(L, meio); c.lineTo(W - R, meio); c.stroke(); c.restore();
-    bar(c, "verdade", L, Math.round(H * 0.55), 40, p, maxW);
+    bar(c, "verdade", L, Math.round(H * 0.55), Math.round(40 * _escala), p, maxW);
     const vf = fit(c, sl.corpo || "O que ninguém tem coragem de falar", "Bricolage Grotesque", "800", maxW, 5, 64, 48);
     c.fillStyle = p.ink; c.font = "800 " + vf.size + "px 'Bricolage Grotesque'";
     const vy = Math.round(H * 0.66), vlh = vf.size * 1.08;
@@ -374,8 +374,10 @@ function draw(c, W, H, sl, idx, total, handle, img) {
     }
     // sticker abaixo do texto, mas sempre dentro da área segura de baixo (respiro pro handle)
     const stY = Math.max(Math.min(Math.max(y + 8, Math.round(H * 0.56)), H - B - 200), y + 8);
-    if (sl.inter === "caixinha") desenharCaixinha(c, L, stY, maxW, sl.pergunta || "Escreve o convite aqui…", p);
-    else desenharEnquete(c, L, stY, maxW, sl.opcaoA || "OPÇÃO A", sl.opcaoB || "OPÇÃO B", p);
+    const stH = sl.inter === "caixinha"
+      ? desenharCaixinha(c, L, stY, maxW, sl.pergunta || "Escreve o convite aqui…", p)
+      : desenharEnquete(c, L, stY, maxW, sl.opcaoA || "OPÇÃO A", sl.opcaoB || "OPÇÃO B", p);
+    if (stY + stH > H - B + 8) _ovf = true; // narração longa empurrou o sticker pra fora do seguro
   }
   c.restore();
 
@@ -759,6 +761,7 @@ const css = `
 .estlbl{font-family:'Bricolage Grotesque',sans-serif;font-weight:700;font-size:11px;letter-spacing:.13em;text-transform:uppercase;color:#6E6E73;}
 .estseg{display:flex;gap:6px;flex-wrap:wrap;}
 .estdupla{display:grid;gap:16px;}
+@media(min-width:480px){.estdupla{grid-template-columns:1fr 1fr;}}
 .estseg-b{flex:1;min-width:60px;border:1px solid #E4E2DE;background:transparent;color:#6E6E73;border-radius:10px;padding:9px 8px;font-family:'Bricolage Grotesque',sans-serif;font-weight:700;font-size:13px;cursor:pointer;transition:all .16s;white-space:nowrap;}
 .estseg-b.on{background:#0A0A0A;color:#F4F3F1;border-color:#0A0A0A;}
 .estseg-b:active{transform:scale(.96);}
